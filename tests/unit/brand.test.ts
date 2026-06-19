@@ -21,4 +21,11 @@ describe('brandSmith', () => {
     process.env.NO_COLOR = '1';
     expect(brandSmith('smith — replicate code')).toBe('smith — replicate code');
   });
+
+  it('returns plain text when stdout is not a TTY', () => {
+    Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
+    delete process.env.NO_COLOR;
+    expect(shouldColorize()).toBe(false);
+    expect(brandSmith('smith — replicate code')).toBe('smith — replicate code');
+  });
 });

@@ -20,4 +20,11 @@ describe('resolveVariables', () => {
       variables: { BAD: () => { throw new Error('boom'); } },
     }, {} as any, {} as any)).toThrow(/Variable "BAD"/);
   });
+
+  it('wraps non-error throws with variable name', () => {
+    expect(() => resolveVariables({
+      placeholder: ['{{', '}}'],
+      variables: { BAD: () => { throw 'boom'; } },
+    }, {} as any, {} as any)).toThrow('Variable "BAD" failed: boom');
+  });
 });

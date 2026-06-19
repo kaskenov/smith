@@ -34,6 +34,9 @@ jobs:
       - name: install
         run: pnpm i --frozen-lockfile
 
+      - name: audit
+        run: pnpm audit --audit-level low
+
       - name: build
         run: pnpm build
 
