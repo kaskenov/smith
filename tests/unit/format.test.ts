@@ -17,4 +17,8 @@ describe('createFormatAPI', () => {
   it('formats singular', () => { expect(format.singular('buttons')).toBe('button'); });
   it('formats prefix', () => { expect(format.prefix('User', 'I')).toBe('IUser'); });
   it('formats suffix', () => { expect(format.suffix('User', 'Dto')).toBe('UserDto'); });
+  it('formats lower', () => { expect(format.lower('Button')).toBe('button'); });
+  it('formats upper', () => { expect(format.upper('button')).toBe('BUTTON'); });
+  it('formats title', () => { expect(format.title('hello_world')).toBe('Hello World'); });
+  it('formats sentence', () => { expect(format.sentence('HELLO_WORLD')).toBe('Hello world'); });
 });

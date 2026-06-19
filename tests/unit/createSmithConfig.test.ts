@@ -17,4 +17,18 @@ describe('createSmithConfig', () => {
     const format = createFormatAPI();
     expect(config.variables.NAME_PASCAL({} as any, { format } as any)).toBe('Button');
   });
+
+  it('treats undefined callback result as empty input', () => {
+    const config = createSmithConfig(() => undefined as unknown as Record<string, never>);
+    expect(config.placeholder).toEqual(['{{', '}}']);
+    expect(config.variables).toEqual({});
+  });
+
+  it('rejects invalid placeholder tuples', () => {
+    expect(() =>
+      createSmithConfig(() => ({
+        placeholder: ['{{'] as unknown as [string, string],
+      })),
+    ).toThrow('placeholder must be a [open, close] tuple');
+  });
 });

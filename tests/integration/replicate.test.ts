@@ -39,6 +39,17 @@ describe('runReplicate integration', () => {
     jest.restoreAllMocks();
   });
 
+  it('throws when no smith project is found', async () => {
+    const emptyDir = mkdtempSync(join(tmpdir(), 'smith-empty-'));
+    process.chdir(emptyDir);
+
+    await expect(runReplicate({ name: 'Button', template: 'component' })).rejects.toThrow(
+      'No .smith directory found. Run from a smith project.',
+    );
+
+    rmSync(emptyDir, { recursive: true, force: true });
+  });
+
   it('discovers root, merges configs, and runs full pipeline in order', async () => {
     const root = mkdtempSync(join(tmpdir(), 'smith-int-'));
     const nestedCwd = join(root, 'apps', 'web');
@@ -229,6 +240,77 @@ describe('runReplicate integration', () => {
       'Template not found: missing. Available templates: component, service',
     );
 
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('reports no available templates when templates directory is missing', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-int-no-templates-'));
+    const smithDir = join(root, '.smith');
+    mkdirSync(smithDir, { recursive: true });
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+};`,
+      'utf8',
+    );
+
+    process.chdir(root);
+    await expect(runReplicate({ name: 'Button', template: 'missing' })).rejects.toThrow(
+      'Template not found: missing. Available templates: (none)',
+    );
+
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('honors rootDir from smith config', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-int-rootdir-'));
+    const smithDir = join(root, '.smith');
+    const packageDir = join(root, 'packages', 'app');
+    const templateDir = join(packageDir, '.smith', 'templates', 'component');
+    mkdirSync(smithDir, { recursive: true });
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.txt'), 'Hello {{name}}', 'utf8');
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = {
+  rootDir: 'packages/app',
+  placeholder: ['{{', '}}'],
+  variables: {},
+};`,
+      'utf8',
+    );
+
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    process.chdir(root);
+    await runReplicate({ name: 'Widget', template: 'component', force: true });
+
+    expect(readFileSync(join(packageDir, 'Widget.txt'), 'utf8')).toBe('Hello Widget');
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('overwrites existing files when force is set', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-int-force-'));
+    const smithDir = join(root, '.smith');
+    const templateDir = join(smithDir, 'templates', 'component');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.txt'), 'new content', 'utf8');
+    writeFileSync(join(root, 'Button.txt'), 'old content', 'utf8');
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+};`,
+      'utf8',
+    );
+
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    process.chdir(root);
+    await runReplicate({ name: 'Button', template: 'component', force: true });
+
+    expect(readFileSync(join(root, 'Button.txt'), 'utf8')).toBe('new content');
     rmSync(root, { recursive: true, force: true });
   });
 });

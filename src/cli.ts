@@ -1,5 +1,7 @@
 import cac from 'cac';
 import { printGlobalHelp, printReplicateHelp } from './commands/help';
+import { runInstall } from './commands/install/router';
+import { runMcpCommand } from './commands/mcp';
 import { runReplicate } from './commands/replicate';
 import { runVersion } from './commands/version';
 import { ReplicationAbortedError } from './core/replicateTree';
@@ -29,7 +31,17 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
-  if (argv.length === 0 || argv.some(isHelpFlag)) {
+  if (command === 'install') {
+    await runInstall(argv);
+    return;
+  }
+
+  if (command === 'mcp') {
+    await runMcpCommand();
+    return;
+  }
+
+  if (argv.length === 0 || (argv.some(isHelpFlag) && command !== 'install')) {
     if (askingReplicateHelp) {
       printReplicateHelp();
       return;

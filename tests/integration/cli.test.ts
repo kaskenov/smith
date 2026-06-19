@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const cli = join(__dirname, '../../src/cli.ts');
@@ -38,5 +40,27 @@ describe('cli smoke', () => {
     expect(out).toContain('--template <template>');
     expect(out).toContain('--path <path>');
     expect(out).toContain('Examples:');
+  });
+
+  it('prints install help with skill names', () => {
+    const out = runCli(['install', '--help']);
+    expect(out).toContain('smith-replicate');
+    expect(out).toContain('install mcp');
+    expect(out).toContain('install skills');
+  });
+
+  it('install mcp --local --dry-run prints planned writes', () => {
+    const tmpRoot = mkdtempSync(join(tmpdir(), 'smith-cli-mcp-'));
+    try {
+      const out = execFileSync(
+        'node',
+        [join(__dirname, '../../dist/cli.js'), 'install', 'mcp', '--local', '--dry-run'],
+        { cwd: tmpRoot, encoding: 'utf8' },
+      );
+      expect(out).toContain('Would write');
+      expect(out).toContain('cli.js');
+    } finally {
+      rmSync(tmpRoot, { recursive: true, force: true });
+    }
   });
 });

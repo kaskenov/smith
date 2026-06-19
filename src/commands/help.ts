@@ -1,5 +1,12 @@
 import { brandSmith } from '../terminal/brand';
 
+export {
+  printInstallHelp,
+  printInstallMcpHelp,
+  printInstallSkillsHelp,
+  printInstallUninstallHelp,
+} from './install/help';
+
 export function printGlobalHelp(): void {
   console.log(brandSmith('smith — I replicate'));
   console.log('');
@@ -8,6 +15,7 @@ export function printGlobalHelp(): void {
   console.log('');
   console.log('Commands:');
   console.log('  replicate, r   Create a component from a template');
+  console.log('  install        Install MCP server and agent skills');
   console.log('');
   console.log('Global flags:');
   console.log('  -h, --help     Show help');
@@ -17,6 +25,8 @@ export function printGlobalHelp(): void {
   console.log('  smith replicate --name Button --template component');
   console.log('  smith r --name card-item --template ui --path src/features');
   console.log('  smith replicate --name Button --template component --force');
+  console.log('  smith install mcp --local');
+  console.log('  smith install skills --cursor');
 }
 
 export function printReplicateHelp(): void {

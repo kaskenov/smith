@@ -10,7 +10,7 @@ function clean() {
   return Promise.resolve();
 }
 
-function build() {
+function compile() {
   if (!existsSync('src')) {
     mkdirSync('dist', { recursive: true });
     return Promise.resolve();
@@ -18,8 +18,17 @@ function build() {
   return gulp.src('src/**/*.ts', { allowEmpty: true }).pipe(tsProject()).pipe(gulp.dest('dist'));
 }
 
+function copyBundled() {
+  if (!existsSync('bundled')) return Promise.resolve();
+  return gulp
+    .src('bundled/**/*', { base: 'bundled', allowEmpty: true })
+    .pipe(gulp.dest('dist/bundled'));
+}
+
+const build = gulp.series(compile, copyBundled);
+
 function watch() {
-  gulp.watch('src/**/*.ts', build);
+  gulp.watch(['src/**/*.ts', 'bundled/**/*'], build);
 }
 
 function test(cb: (err?: Error) => void) {
