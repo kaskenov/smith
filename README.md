@@ -10,15 +10,15 @@ pnpm add -g @kaskenov/smith
 
 ## Install agent tooling
 
-Install smith **MCP server** and **skills** so Cursor, Claude Code, and Qwen Code agents can work with `.smith/` projects — list templates, run replicate, scaffold configs, and create templates.
+Install the smith **MCP server** so Cursor, Claude Code, and Qwen Code agents can list templates, replicate, validate, and scaffold `.smith/` projects.
 
 ```bash
-smith install mcp --local
-smith install skills --local
+smith install --local          # MCP (default)
 smith install list --local
+smith install skills --local   # optional agent skill
 ```
 
-By default, both commands target **Cursor, Claude Code, and Qwen Code** in the **current project** (`--local`).
+By default, install targets **Cursor, Claude Code, and Qwen Code** in the **current project** (`--local`).
 
 | Flag | Description |
 |------|-------------|
@@ -27,26 +27,12 @@ By default, both commands target **Cursor, Claude Code, and Qwen Code** in the *
 | `--qwen` | Qwen Code only |
 | `--local` | Project scope (default) — `.cursor/`, `.claude/`, `.qwen/` |
 | `--global` | User scope — `~/.cursor/`, `~/.claude/`, `~/.qwen/` |
-| `--force` | Overwrite existing MCP entry or skill directories |
+| `--force` | Overwrite existing MCP entry or skill directory |
 | `--dry-run` | Print planned changes without writing files |
 
-### Skills
+### MCP (recommended)
 
-`smith install skills` copies three skills together:
-
-- `smith-replicate` — when and how to run `smith replicate`
-- `smith-templates` — template layout, placeholders, nested dirs
-- `smith-config` — `createSmithConfig`, variables, hooks
-
-| Agent | Local path | Global path |
-|-------|------------|-------------|
-| Cursor | `.cursor/skills/` | `~/.cursor/skills/` |
-| Claude | `.claude/skills/` | `~/.claude/skills/` |
-| Qwen | `.qwen/skills/` | `~/.qwen/skills/` |
-
-### MCP
-
-`smith install mcp` registers the `smith` MCP server (`smith mcp` stdio). Config uses an absolute path to `node` + `dist/cli.js` so GUI apps can spawn it reliably.
+`smith install` registers the `smith` MCP server (`smith mcp` stdio). Config uses an absolute path to `node` + `dist/cli.js` so GUI apps can spawn it reliably.
 
 | Agent | Local path | Global path |
 |-------|------------|-------------|
@@ -58,11 +44,21 @@ Claude project MCP also writes `.claude/settings.local.json` with `enabledMcpjso
 
 Qwen stores MCP under `mcpServers` in `settings.json` (same file as other Qwen Code settings).
 
+### Skills (optional)
+
+`smith install skills` copies one optional skill: **`smith`** — a compact guide for replicate, templates, config, and MCP tools. MCP alone is usually enough; install skills for better agent discovery and onboarding.
+
+| Agent | Local path | Global path |
+|-------|------------|-------------|
+| Cursor | `.cursor/skills/` | `~/.cursor/skills/` |
+| Claude | `.claude/skills/` | `~/.claude/skills/` |
+| Qwen | `.qwen/skills/` | `~/.qwen/skills/` |
+
 ### Uninstall
 
 ```bash
-smith install uninstall mcp --local
-smith install uninstall skills --local
+smith uninstall mcp --local
+smith uninstall skills --local
 ```
 
 ### Verify
@@ -80,10 +76,10 @@ smith install list --local
 ### Examples
 
 ```bash
-smith install mcp --local
+smith install --local
 smith install skills --local
 smith install mcp --qwen --global --force
-smith install skills --cursor --global
+smith install list --cursor
 ```
 
 ## Project setup

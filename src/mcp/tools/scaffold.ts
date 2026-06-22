@@ -43,7 +43,8 @@ export function registerScaffoldTools(server: McpServer): void {
   server.registerTool(
     'smith_init',
     {
-      description: 'Initialize .smith root config and templates directory',
+      description:
+        'Bootstrap a new smith project: create .smith/config.js (starter) and empty templates/ directory. Use on projects without .smith yet.',
       inputSchema: {
         cwd: z.string().optional(),
       },
@@ -67,7 +68,8 @@ export function registerScaffoldTools(server: McpServer): void {
   server.registerTool(
     'smith_create_template',
     {
-      description: 'Create a new smith template with optional files',
+      description:
+        'Create .smith/templates/<name>/ with optional files. Paths may use {{name}} placeholders. Default stub: {{name}}.txt. Template config.js is not copied on replicate.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string(),
@@ -111,7 +113,8 @@ export function registerScaffoldTools(server: McpServer): void {
   server.registerTool(
     'smith_create_config',
     {
-      description: 'Create .smith/config.js when missing',
+      description:
+        'Create .smith/config.js when missing (createSmithConfig starter with default variables). Project must already have .smith/.',
       inputSchema: {
         cwd: z.string().optional(),
       },

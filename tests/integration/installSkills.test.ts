@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { runInstallSkills } from '../../src/commands/install/skills';
-import { runUninstallSkills } from '../../src/commands/install/uninstall';
+import { runUninstallSkills } from '../../src/commands/uninstall/run';
 import * as brandModule from '../../src/terminal/brand';
 
 describe('runInstallSkills integration', () => {
@@ -31,9 +31,9 @@ describe('runInstallSkills integration', () => {
 
     await runInstallSkills({ cwd: tmpRoot });
 
-    expect(existsSync(join(tmpRoot, '.cursor/skills/smith-replicate/SKILL.md'))).toBe(true);
-    expect(existsSync(join(tmpRoot, '.claude/skills/smith-replicate/SKILL.md'))).toBe(true);
-    expect(existsSync(join(tmpRoot, '.qwen/skills/smith-replicate/SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpRoot, '.cursor/skills/smith/SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpRoot, '.claude/skills/smith/SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpRoot, '.qwen/skills/smith/SKILL.md'))).toBe(true);
     expect(brandSpy).toHaveBeenCalledWith(`smith installed skills to ${join(tmpRoot, '.cursor/skills')}`);
     expect(brandSpy).toHaveBeenCalledWith(`smith installed skills to ${join(tmpRoot, '.claude/skills')}`);
     expect(brandSpy).toHaveBeenCalledWith(`smith installed skills to ${join(tmpRoot, '.qwen/skills')}`);
@@ -46,7 +46,7 @@ describe('runInstallSkills integration', () => {
 
     await runInstallSkills({ cwd: tmpRoot, claude: true });
 
-    expect(existsSync(join(tmpRoot, '.claude/skills/smith-config/SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpRoot, '.claude/skills/smith/SKILL.md'))).toBe(true);
     expect(existsSync(join(tmpRoot, '.cursor/skills'))).toBe(false);
   });
 
@@ -71,7 +71,7 @@ describe('runInstallSkills integration', () => {
 
     try {
       await runInstallSkills({ cursor: true });
-      expect(existsSync(join(tmpRoot, '.cursor/skills/smith-replicate/SKILL.md'))).toBe(true);
+      expect(existsSync(join(tmpRoot, '.cursor/skills/smith/SKILL.md'))).toBe(true);
     } finally {
       process.chdir(previousCwd);
     }
@@ -86,7 +86,7 @@ describe('runInstallSkills integration', () => {
     try {
       await runInstallSkills({ cursor: true });
       await runUninstallSkills({ cursor: true });
-      expect(existsSync(join(tmpRoot, '.cursor/skills/smith-replicate'))).toBe(false);
+      expect(existsSync(join(tmpRoot, '.cursor/skills/smith'))).toBe(false);
     } finally {
       process.chdir(previousCwd);
     }

@@ -6,7 +6,7 @@ import { removeClaudeMcpEnablement } from '../../install/claudeSettings';
 import { SMITH_MCP_SERVER_KEY, SMITH_SKILL_NAMES } from '../../install/constants';
 import { readJsonFile, writeJsonFile } from '../../install/jsonConfig';
 import { defaultMcpConfigFile, type McpConfigFile } from '../../install/mcpConfigFile';
-import { removeMcpServer, type McpServerConfig } from '../../install/mergeMcpConfig';
+import { removeMcpServer } from '../../install/mergeMcpConfig';
 import {
   getClaudeSettingsLocalPath,
   getMcpConfigTarget,

@@ -1,55 +1,23 @@
-import type { InstallFlags } from '../../install/types';
+import { parseAgentFlags } from '../agentFlags';
 import {
   printInstallHelp,
   printInstallMcpHelp,
   printInstallSkillsHelp,
-  printInstallUninstallHelp,
 } from './help';
 import { runInstallList } from './list';
 import { runInstallMcp } from './mcp';
 import { runInstallSkills } from './skills';
-import { runUninstallMcp, runUninstallSkills } from './uninstall';
+
+export { parseAgentFlags as parseInstallFlags } from '../agentFlags';
+
+const INSTALL_SUBCOMMANDS = new Set(['mcp', 'skills', 'list']);
 
 function isHelpFlag(arg: string): boolean {
   return arg === '-h' || arg === '--help';
 }
 
-export function parseInstallFlags(args: string[]): InstallFlags {
-  const flags: InstallFlags = {};
-
-  for (const arg of args) {
-    if (isHelpFlag(arg)) {
-      continue;
-    }
-
-    switch (arg) {
-      case '--cursor':
-        flags.cursor = true;
-        break;
-      case '--claude':
-        flags.claude = true;
-        break;
-      case '--qwen':
-        flags.qwen = true;
-        break;
-      case '--global':
-        flags.global = true;
-        break;
-      case '--local':
-        flags.local = true;
-        break;
-      case '--force':
-        flags.force = true;
-        break;
-      case '--dry-run':
-        flags.dryRun = true;
-        break;
-      default:
-        throw new Error(`Unknown option: ${arg}`);
-    }
-  }
-
-  return flags;
+function isInstallSubcommand(arg: string): boolean {
+  return INSTALL_SUBCOMMANDS.has(arg);
 }
 
 async function routeInstall(argv: string[]): Promise<void> {
@@ -59,8 +27,13 @@ async function routeInstall(argv: string[]): Promise<void> {
 
   const rest = argv.slice(1);
 
-  if (rest.length === 0 || (rest.length === 1 && isHelpFlag(rest[0]!))) {
+  if (rest.length === 1 && isHelpFlag(rest[0]!)) {
     printInstallHelp();
+    return;
+  }
+
+  if (rest.length === 0 || !isInstallSubcommand(rest[0]!)) {
+    await runInstallMcp(parseAgentFlags(rest));
     return;
   }
 
@@ -75,9 +48,6 @@ async function routeInstall(argv: string[]): Promise<void> {
       case 'skills':
         printInstallSkillsHelp();
         return;
-      case 'uninstall':
-        printInstallUninstallHelp();
-        return;
       default:
         printInstallHelp();
         return;
@@ -86,29 +56,14 @@ async function routeInstall(argv: string[]): Promise<void> {
 
   switch (subcommand) {
     case 'mcp':
-      await runInstallMcp(parseInstallFlags(afterSubcommand));
+      await runInstallMcp(parseAgentFlags(afterSubcommand));
       return;
     case 'skills':
-      await runInstallSkills(parseInstallFlags(afterSubcommand));
+      await runInstallSkills(parseAgentFlags(afterSubcommand));
       return;
     case 'list':
-      await runInstallList(parseInstallFlags(afterSubcommand));
+      await runInstallList(parseAgentFlags(afterSubcommand));
       return;
-    case 'uninstall': {
-      const target = afterSubcommand[0];
-      const flagArgs = afterSubcommand.slice(1);
-
-      if (target === 'mcp') {
-        await runUninstallMcp(parseInstallFlags(flagArgs));
-        return;
-      }
-      if (target === 'skills') {
-        await runUninstallSkills(parseInstallFlags(flagArgs));
-        return;
-      }
-
-      throw new Error('Expected: smith install uninstall mcp|skills');
-    }
     default:
       throw new Error(`Unknown install subcommand: ${subcommand}`);
   }

@@ -65,7 +65,8 @@ export function registerReadTools(server: McpServer): void {
   server.registerTool(
     'smith_project_info',
     {
-      description: 'Return smith root and available templates',
+      description:
+        'Discover smith project root and template names. Walks up from cwd to find .smith/. Use first to orient in a smith project.',
       inputSchema: {
         cwd: z.string().optional(),
       },
@@ -82,7 +83,8 @@ export function registerReadTools(server: McpServer): void {
   server.registerTool(
     'smith_list_templates',
     {
-      description: 'List smith templates and optional template tree',
+      description:
+        'List template folders under .smith/templates/. Pass template name for file paths and optional tree. Placeholders like {{name}} appear in file names.',
       inputSchema: {
         cwd: z.string().optional(),
         template: z.string().optional(),
@@ -117,7 +119,8 @@ export function registerReadTools(server: McpServer): void {
   server.registerTool(
     'smith_read_file',
     {
-      description: 'Read a file relative to .smith/',
+      description:
+        'Read a file relative to .smith/ (e.g. config.js, templates/component/{{name}}.txt). Path must stay inside .smith/.',
       inputSchema: {
         cwd: z.string().optional(),
         path: z.string(),
