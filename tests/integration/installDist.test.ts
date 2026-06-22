@@ -22,7 +22,7 @@ describe('install from built dist', () => {
       encoding: 'utf8',
     });
 
-    expect(existsSync(join(root, '.cursor', 'skills', 'smith-replicate', 'SKILL.md'))).toBe(true);
-    expect(existsSync(join(root, '.claude', 'skills', 'smith-config', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(root, '.cursor', 'skills', 'smith', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(root, '.claude', 'skills', 'smith', 'SKILL.md'))).toBe(true);
   });
 });

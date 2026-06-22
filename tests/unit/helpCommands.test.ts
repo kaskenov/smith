@@ -3,7 +3,7 @@ import {
   printInstallHelp,
   printInstallMcpHelp,
   printInstallSkillsHelp,
-  printInstallUninstallHelp,
+  printUninstallHelp,
   printReplicateHelp,
 } from '../../src/commands/help';
 
@@ -25,7 +25,7 @@ describe('help commands', () => {
     printGlobalHelp();
 
     expect(logs.join('\n')).toContain('smith — I replicate');
-    expect(logs.join('\n')).toContain('smith install mcp --local');
+    expect(logs.join('\n')).toContain('smith install --local');
     expect(logs.join('\n')).toContain('smith replicate --name Button --template component');
   });
 
@@ -42,7 +42,7 @@ describe('help commands', () => {
 
     expect(logs.join('\n')).toContain('smith install — agent tooling');
     expect(logs.join('\n')).toContain('--qwen');
-    expect(logs.join('\n')).toContain('smith-replicate, smith-templates, smith-config');
+    expect(logs.join('\n')).toContain('smith install skills');
   });
 
   it('prints install mcp help', () => {
@@ -55,14 +55,14 @@ describe('help commands', () => {
   it('prints install skills help', () => {
     printInstallSkillsHelp();
 
-    expect(logs.join('\n')).toContain('smith install skills — agent skills');
+    expect(logs.join('\n')).toContain('smith install skills — optional agent skill');
     expect(logs.join('\n')).toContain('smith install skills --claude --dry-run');
   });
 
-  it('prints install uninstall help', () => {
-    printInstallUninstallHelp();
+  it('prints uninstall help', () => {
+    printUninstallHelp();
 
-    expect(logs.join('\n')).toContain('smith install uninstall — remove agent tooling');
-    expect(logs.join('\n')).toContain('smith install uninstall skills --qwen --dry-run');
+    expect(logs.join('\n')).toContain('smith uninstall — remove agent tooling');
+    expect(logs.join('\n')).toContain('smith uninstall skills --qwen --dry-run');
   });
 });

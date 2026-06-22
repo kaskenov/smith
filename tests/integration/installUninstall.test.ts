@@ -8,7 +8,7 @@ import { runInstallSkills } from '../../src/commands/install/skills';
 import {
   runUninstallMcp,
   runUninstallSkills,
-} from '../../src/commands/install/uninstall';
+} from '../../src/commands/uninstall/run';
 import { SMITH_MCP_SERVER_KEY, SMITH_SKILL_NAMES } from '../../src/install/constants';
 import { writeJsonFile } from '../../src/install/jsonConfig';
 
@@ -97,9 +97,7 @@ describe('install uninstall round-trip', () => {
 
     await runInstallList({ cwd: tmpRoot, cursor: true });
     expect(logs.some((line) => line.includes('MCP smith: yes'))).toBe(true);
-    expect(logs.some((line) => line.includes('skills: smith-replicate, smith-templates, smith-config'))).toBe(
-      true,
-    );
+    expect(logs.some((line) => line.includes('skills: smith'))).toBe(true);
 
     logs.length = 0;
     await runUninstallMcp({ cwd: tmpRoot, cursor: true });
@@ -121,13 +119,13 @@ describe('install uninstall round-trip', () => {
     await runUninstallSkills({ cwd: tmpRoot, cursor: true, dryRun: true });
 
     expect(existsSync(join(tmpRoot, '.cursor/mcp.json'))).toBe(true);
-    expect(existsSync(join(tmpRoot, '.cursor/skills/smith-replicate/SKILL.md'))).toBe(true);
+    expect(existsSync(join(tmpRoot, '.cursor/skills/smith/SKILL.md'))).toBe(true);
     expect(consoleSpy).toHaveBeenCalledWith(
       `Would write ${join(tmpRoot, '.cursor/mcp.json')}`,
       expect.any(String),
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      `Would remove skill ${join(tmpRoot, '.cursor/skills/smith-replicate')}`,
+      `Would remove skill ${join(tmpRoot, '.cursor/skills/smith')}`,
     );
   });
 
@@ -227,34 +225,14 @@ describe('install uninstall round-trip', () => {
     expect(logs.some((line) => line.includes('uninstalled MCP'))).toBe(true);
   });
 
-  it('uninstalls only existing skills and skips missing ones', async () => {
+  it('uninstalls smith skill after install', async () => {
     const tmpRoot = makeTmpRoot();
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await runInstallSkills({ cwd: tmpRoot, cursor: true });
-    rmSync(join(tmpRoot, '.cursor/skills/smith-templates'), { recursive: true, force: true });
-
     await runUninstallSkills({ cwd: tmpRoot, cursor: true });
 
-    expect(existsSync(join(tmpRoot, '.cursor/skills/smith-replicate'))).toBe(false);
-    expect(existsSync(join(tmpRoot, '.cursor/skills/smith-config'))).toBe(false);
-    expect(existsSync(join(tmpRoot, '.cursor/skills/smith-templates'))).toBe(false);
-  });
-
-  it('lists partial skill installation', async () => {
-    const tmpRoot = makeTmpRoot();
-    const logs: string[] = [];
-    jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
-      logs.push(args.map(String).join(' '));
-    });
-
-    await runInstallSkills({ cwd: tmpRoot, cursor: true });
-    rmSync(join(tmpRoot, '.cursor/skills/smith-config'), { recursive: true, force: true });
-
-    logs.length = 0;
-    await runInstallList({ cwd: tmpRoot, cursor: true });
-
-    expect(logs.some((line) => line.includes('skills: smith-replicate, smith-templates'))).toBe(true);
+    expect(existsSync(join(tmpRoot, '.cursor/skills/smith'))).toBe(false);
   });
 
   it('uses process.cwd for list and uninstall when cwd flag is omitted', async () => {

@@ -44,7 +44,7 @@ describe('cli smoke', () => {
 
   it('prints install help with skill names', () => {
     const out = runCli(['install', '--help']);
-    expect(out).toContain('smith-replicate');
+    expect(out).toContain('smith install skills');
     expect(out).toContain('install mcp');
     expect(out).toContain('install skills');
   });

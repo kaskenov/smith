@@ -20,11 +20,7 @@ describe('resolveAgents', () => {
 });
 
 describe('SMITH_SKILL_NAMES', () => {
-  it('lists all three skills', () => {
-    expect(SMITH_SKILL_NAMES).toEqual([
-      'smith-replicate',
-      'smith-templates',
-      'smith-config',
-    ]);
+  it('lists the bundled smith skill', () => {
+    expect(SMITH_SKILL_NAMES).toEqual(['smith']);
   });
 });

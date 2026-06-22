@@ -15,6 +15,6 @@ describe('getBundledDir errors', () => {
       'Bundled smith skills not found. Reinstall @kaskenov/smith or run pnpm build.',
     );
     expect(existsSync).toHaveBeenCalled();
-    expect(jest.mocked(existsSync).mock.calls.some(([target]) => String(target).endsWith(join('bundled', 'skills', 'smith-replicate', 'SKILL.md')))).toBe(true);
+    expect(jest.mocked(existsSync).mock.calls.some(([target]) => String(target).endsWith(join('bundled', 'skills', 'smith', 'SKILL.md')))).toBe(true);
   });
 });
