@@ -433,4 +433,39 @@ describe('runReplicate integration', () => {
     expect(existsSync(join(root, 'Button.spec.ts'))).toBe(true);
     rmSync(root, { recursive: true, force: true });
   });
+
+  it('throws when template presets are invalid', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-int-invalid-presets-'));
+    const smithDir = join(root, '.smith');
+    const templateDir = join(smithDir, 'templates', 'component');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.txt'), 'hello', 'utf8');
+    writeFileSync(
+      join(templateDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+  defaultPreset: 'missing',
+  presets: {
+    core: { include: ['{{name}}.txt'] },
+  },
+};`,
+      'utf8',
+    );
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+};`,
+      'utf8',
+    );
+
+    process.chdir(root);
+    await expect(runReplicate({ name: 'Button', template: 'component', skip: true })).rejects.toThrow(
+      'defaultPreset "missing" is not defined in presets',
+    );
+
+    rmSync(root, { recursive: true, force: true });
+  });
 });
