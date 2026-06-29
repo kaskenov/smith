@@ -22,6 +22,7 @@ export function printGlobalHelp(): void {
   console.log('  replicate, r   Create a component from a template');
   console.log('  install        Install smith MCP server (default)');
   console.log('  uninstall      Remove smith MCP server and agent skills');
+  console.log('  update         Update smith, its MCP, and skills');
   console.log('');
   console.log('Global flags:');
   console.log('  -h, --help     Show help');

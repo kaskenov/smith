@@ -1,7 +1,7 @@
 {
   "name": "@kaskenov/smith",
   "version": "2.0.0",
-  "description": "I replicate",
+  "description": "A powerful command-line interface for scaffolding, templating, and code generation.",
   "author": {
     "name": "Pavel Kaskenov",
     "email": "p.kaskenov@gmail.com",
@@ -58,7 +58,7 @@
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/git": "10.0.1",
     "@semantic-release/github": "12.0.0",
-    "@semantic-release/npm": "13.0.0",
+    "@semantic-release/npm": "13.1.5",
     "@types/gulp": "4.0.18",
     "@types/gulp-typescript": "0.0.33",
     "@types/jest": "29.5.14",
