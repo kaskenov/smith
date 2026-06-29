@@ -89,4 +89,33 @@ describe('replicateTree', () => {
     expect(readFileSync(join(outputRoot, 'Button.txt'), 'utf8')).toBe('keep me');
     rmSync(root, { recursive: true, force: true });
   });
+
+  it('replicates only files matched by preset include patterns', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-tree-preset-'));
+    const templateDir = join(root, 'template');
+    const outputRoot = join(root, 'out');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.vue'), 'vue', 'utf8');
+    writeFileSync(join(templateDir, '{{name}}.spec.ts'), 'spec', 'utf8');
+    writeFileSync(join(templateDir, '{{name}}.types.ts'), 'types', 'utf8');
+
+    const result = await replicateTree({
+      templateDir,
+      outputRoot,
+      vars: { name: 'Button' },
+      delimiters: ['{{', '}}'],
+      policy: 'force',
+      include: ['{{name}}.vue', '{{name}}.types.ts'],
+    });
+
+    expect(result.written).toHaveLength(2);
+    expect(result.written).toEqual(
+      expect.arrayContaining([
+        join(outputRoot, 'Button.vue'),
+        join(outputRoot, 'Button.types.ts'),
+      ]),
+    );
+    expect(existsSync(join(outputRoot, 'Button.spec.ts'))).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
 });

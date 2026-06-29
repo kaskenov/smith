@@ -8,6 +8,8 @@ export function mergeConfigs(root: SmithConfig, local?: SmithConfigInput): Smith
     variables: { ...root.variables, ...local.variables },
     before: root.before,
     after: root.after,
+    defaultPreset: local.defaultPreset ?? root.defaultPreset,
+    presets: local.presets ?? root.presets,
   };
 }
 

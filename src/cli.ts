@@ -13,6 +13,7 @@ interface ReplicateCliOptions {
   path?: string;
   force?: boolean;
   skip?: boolean;
+  preset?: string;
 }
 
 function isHelpFlag(arg: string): boolean {
@@ -66,6 +67,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     .option('--path <path>', 'Output root directory')
     .option('--force', 'Overwrite existing files')
     .option('--skip', 'Skip existing files')
+    .option('--preset <preset>', 'Preset name from template config')
     .action(async (opts: ReplicateCliOptions) => {
       if (!opts.name || !opts.template) {
         console.error('Missing required flags: --name and --template');
@@ -81,6 +83,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           path: opts.path,
           force: opts.force,
           skip: opts.skip,
+          preset: opts.preset,
         });
       } catch (error) {
         if (error instanceof ReplicationAbortedError) {

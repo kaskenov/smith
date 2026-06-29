@@ -31,4 +31,15 @@ describe('createSmithConfig', () => {
       })),
     ).toThrow('placeholder must be a [open, close] tuple');
   });
+
+  it('rejects invalid defaultPreset references', () => {
+    expect(() =>
+      createSmithConfig(() => ({
+        defaultPreset: 'missing',
+        presets: {
+          core: { include: ['{{name}}.vue'] },
+        },
+      })),
+    ).toThrow('defaultPreset "missing" is not defined in presets');
+  });
 });
