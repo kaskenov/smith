@@ -266,6 +266,86 @@ describe('mcp tools integration', () => {
     }
   });
 
+  it('returns error when root config presets are invalid', async () => {
+    const fixtureRoot = join(__dirname, '../fixtures/basic-project');
+    const root = makeTmpRoot('smith-mcp-validate-root-errors-');
+    cpSync(fixtureRoot, root, { recursive: true });
+    patchConfigRequires(root);
+    writeFileSync(
+      join(root, '.smith', 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+  defaultPreset: 'missing',
+  presets: {
+    core: { include: ['{{name}}.txt'] },
+  },
+};`,
+      'utf8',
+    );
+
+    const { client, server } = await createPair();
+
+    try {
+      const result = await client.callTool({
+        name: 'smith_validate',
+        arguments: { cwd: root },
+      });
+      expect(result).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [
+            expect.objectContaining({
+              text: 'defaultPreset "missing" is not defined in presets',
+            }),
+          ],
+        }),
+      );
+    } finally {
+      await cleanupPair(server, client);
+    }
+  });
+
+  it('returns error when merged template presets are invalid', async () => {
+    const fixtureRoot = join(__dirname, '../fixtures/basic-project');
+    const root = makeTmpRoot('smith-mcp-validate-template-errors-');
+    cpSync(fixtureRoot, root, { recursive: true });
+    patchConfigRequires(root);
+    writeFileSync(
+      join(root, '.smith', 'templates', 'component', 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+  defaultPreset: 'missing',
+  presets: {
+    core: { include: ['{{name}}.txt'] },
+  },
+};`,
+      'utf8',
+    );
+
+    const { client, server } = await createPair();
+
+    try {
+      const result = await client.callTool({
+        name: 'smith_validate',
+        arguments: { cwd: root, template: 'component' },
+      });
+      expect(result).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [
+            expect.objectContaining({
+              text: 'defaultPreset "missing" is not defined in presets',
+            }),
+          ],
+        }),
+      );
+    } finally {
+      await cleanupPair(server, client);
+    }
+  });
+
   it('supports read and action tools against basic-project fixture', async () => {
     const fixtureRoot = join(__dirname, '../fixtures/basic-project');
     const root = makeTmpRoot('smith-mcp-read-');

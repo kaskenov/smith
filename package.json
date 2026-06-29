@@ -1,7 +1,7 @@
 {
   "name": "@kaskenov/smith",
   "version": "2.0.0",
-  "description": "I replicate",
+  "description": "A powerful command-line interface for scaffolding, templating, and code generation.",
   "author": {
     "name": "Pavel Kaskenov",
     "email": "p.kaskenov@gmail.com",
