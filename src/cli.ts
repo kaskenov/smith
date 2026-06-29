@@ -1,11 +1,15 @@
 import cac from 'cac';
+
 import { printGlobalHelp, printReplicateHelp } from './commands/help';
 import { runInstall } from './commands/install/router';
 import { runMcpCommand } from './commands/mcp';
 import { runReplicate } from './commands/replicate';
+import { runUpdate } from './commands/update';
 import { runUninstall } from './commands/uninstall/router';
 import { runVersion } from './commands/version';
 import { ReplicationAbortedError } from './core/replicateTree';
+import { notifyIfNewerVersion } from './package/registry';
+import { readPackageVersion } from './package/version';
 
 interface ReplicateCliOptions {
   name?: string;
@@ -13,6 +17,7 @@ interface ReplicateCliOptions {
   path?: string;
   force?: boolean;
   skip?: boolean;
+  preset?: string;
 }
 
 function isHelpFlag(arg: string): boolean {
@@ -23,7 +28,19 @@ function isVersionFlag(arg: string): boolean {
   return arg === '-v' || arg === '--version';
 }
 
+function shouldSkipVersionCheck(argv: string[]): boolean {
+  if (argv.some(isVersionFlag)) return true;
+  const command = argv[0];
+  if (command === 'mcp' || command === 'update') return true;
+  if (argv.length === 0 || argv.some(isHelpFlag)) return true;
+  return false;
+}
+
 export async function run(argv = process.argv.slice(2)): Promise<void> {
+  if (!shouldSkipVersionCheck(argv)) {
+    void notifyIfNewerVersion(readPackageVersion());
+  }
+
   const command = argv[0];
   const askingReplicateHelp = (command === 'replicate' || command === 'r') && argv.some(isHelpFlag);
 
@@ -47,6 +64,11 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
+  if (command === 'update') {
+    await runUpdate();
+    return;
+  }
+
   if (argv.length === 0 || (argv.some(isHelpFlag) && command !== 'install' && command !== 'uninstall')) {
     if (askingReplicateHelp) {
       printReplicateHelp();
@@ -66,6 +88,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     .option('--path <path>', 'Output root directory')
     .option('--force', 'Overwrite existing files')
     .option('--skip', 'Skip existing files')
+    .option('--preset <preset>', 'Preset name from template config')
     .action(async (opts: ReplicateCliOptions) => {
       if (!opts.name || !opts.template) {
         console.error('Missing required flags: --name and --template');
@@ -81,6 +104,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           path: opts.path,
           force: opts.force,
           skip: opts.skip,
+          preset: opts.preset,
         });
       } catch (error) {
         if (error instanceof ReplicationAbortedError) {

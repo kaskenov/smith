@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { filterFilesByPreset } from './filterFiles';
 import { substitute } from './substitute';
 import { resolveConflict } from './conflicts';
 import type { ConflictPolicy, PlaceholderDelimiters, VariableMap } from '../types';
@@ -39,13 +40,23 @@ export async function replicateTree(options: {
   vars: VariableMap;
   delimiters: PlaceholderDelimiters;
   policy: ConflictPolicy;
+  include?: string[];
+  exclude?: string[];
   onWrite?: (file: string) => void;
 }): Promise<{ written: string[]; skipped: string[] }> {
-  const { templateDir, outputRoot, vars, delimiters, policy, onWrite } = options;
+  const { templateDir, outputRoot, vars, delimiters, policy, include, exclude, onWrite } = options;
   const written: string[] = [];
   const skipped: string[] = [];
 
-  const files = walkTemplate(templateDir).sort((a, b) => b.relPath.length - a.relPath.length);
+  const allFiles = walkTemplate(templateDir).sort((a, b) => b.relPath.length - a.relPath.length);
+  const allowedRelPaths = new Set(
+    filterFilesByPreset(
+      allFiles.map((file) => file.relPath),
+      include,
+      exclude,
+    ),
+  );
+  const files = allFiles.filter((file) => allowedRelPaths.has(file.relPath));
 
   for (const { srcPath, relPath } of files) {
     const outRel = substitute(relPath, vars, delimiters);

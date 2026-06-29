@@ -313,4 +313,159 @@ describe('runReplicate integration', () => {
     expect(readFileSync(join(root, 'Button.txt'), 'utf8')).toBe('new content');
     rmSync(root, { recursive: true, force: true });
   });
+
+  it('replicates only files from selected preset', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-int-preset-'));
+    const smithDir = join(root, '.smith');
+    const templateDir = join(smithDir, 'templates', 'component');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.vue'), 'vue {{name}}', 'utf8');
+    writeFileSync(join(templateDir, '{{name}}.spec.ts'), 'spec {{name}}', 'utf8');
+    writeFileSync(join(templateDir, '{{name}}.types.ts'), 'types {{name}}', 'utf8');
+    writeFileSync(
+      join(templateDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+  defaultPreset: 'core',
+  presets: {
+    core: {
+      include: ['{{name}}.vue', '{{name}}.types.ts'],
+    },
+    full: {
+      include: ['**/*'],
+    },
+  },
+};`,
+      'utf8',
+    );
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+};`,
+      'utf8',
+    );
+
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    process.chdir(root);
+    await runReplicate({ name: 'Button', template: 'component', force: true });
+
+    expect(existsSync(join(root, 'Button.vue'))).toBe(true);
+    expect(existsSync(join(root, 'Button.types.ts'))).toBe(true);
+    expect(existsSync(join(root, 'Button.spec.ts'))).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('warns and replicates all files when presets exist but none selected', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-int-preset-warn-'));
+    const smithDir = join(root, '.smith');
+    const templateDir = join(smithDir, 'templates', 'component');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.vue'), 'vue', 'utf8');
+    writeFileSync(join(templateDir, '{{name}}.spec.ts'), 'spec', 'utf8');
+    writeFileSync(
+      join(templateDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+  presets: {
+    core: { include: ['{{name}}.vue'] },
+  },
+};`,
+      'utf8',
+    );
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+};`,
+      'utf8',
+    );
+
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    process.chdir(root);
+    await runReplicate({ name: 'Button', template: 'component', force: true });
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no preset selected'));
+    expect(existsSync(join(root, 'Button.vue'))).toBe(true);
+    expect(existsSync(join(root, 'Button.spec.ts'))).toBe(true);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('honors CLI preset override', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-int-preset-cli-'));
+    const smithDir = join(root, '.smith');
+    const templateDir = join(smithDir, 'templates', 'component');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.vue'), 'vue', 'utf8');
+    writeFileSync(join(templateDir, '{{name}}.spec.ts'), 'spec', 'utf8');
+    writeFileSync(
+      join(templateDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+  defaultPreset: 'core',
+  presets: {
+    core: { include: ['{{name}}.vue'] },
+    full: { include: ['**/*'] },
+  },
+};`,
+      'utf8',
+    );
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+};`,
+      'utf8',
+    );
+
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    process.chdir(root);
+    await runReplicate({ name: 'Button', template: 'component', preset: 'full', force: true });
+
+    expect(existsSync(join(root, 'Button.vue'))).toBe(true);
+    expect(existsSync(join(root, 'Button.spec.ts'))).toBe(true);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('throws when template presets are invalid', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-int-invalid-presets-'));
+    const smithDir = join(root, '.smith');
+    const templateDir = join(smithDir, 'templates', 'component');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.txt'), 'hello', 'utf8');
+    writeFileSync(
+      join(templateDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+  defaultPreset: 'missing',
+  presets: {
+    core: { include: ['{{name}}.txt'] },
+  },
+};`,
+      'utf8',
+    );
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+};`,
+      'utf8',
+    );
+
+    process.chdir(root);
+    await expect(runReplicate({ name: 'Button', template: 'component', skip: true })).rejects.toThrow(
+      'defaultPreset "missing" is not defined in presets',
+    );
+
+    rmSync(root, { recursive: true, force: true });
+  });
 });
