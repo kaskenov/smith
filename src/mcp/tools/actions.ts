@@ -3,6 +3,8 @@ import { join, resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { loadRootConfig, loadTemplateConfig } from '../../config/loadConfig';
+import { mergeConfigs } from '../../config/mergeConfig';
+import { validatePresets } from '../../config/validatePresets';
 import { runReplicate } from '../../commands/replicate';
 import { requireSmithRoot } from '../context';
 
@@ -43,7 +45,12 @@ export function registerActionTools(server: McpServer): void {
     },
     async ({ cwd, template }) => {
       const root = requireSmithRoot(normalizeCwd(cwd));
-      await loadRootConfig(root);
+      const rootConfig = await loadRootConfig(root);
+
+      const rootErrors = validatePresets(rootConfig.presets, rootConfig.defaultPreset);
+      if (rootErrors.length > 0) {
+        throw new Error(rootErrors.join('\n'));
+      }
 
       if (!template) {
         return jsonResult({
@@ -58,7 +65,13 @@ export function registerActionTools(server: McpServer): void {
         throw new Error(`Template not found: ${template}`);
       }
 
-      await loadTemplateConfig(templateDir);
+      const templateConfig = await loadTemplateConfig(templateDir);
+      const merged = mergeConfigs(rootConfig, templateConfig);
+      const mergedErrors = validatePresets(merged.presets, merged.defaultPreset);
+      if (mergedErrors.length > 0) {
+        throw new Error(mergedErrors.join('\n'));
+      }
+
       return jsonResult({
         ok: true,
         root,
@@ -72,22 +85,23 @@ export function registerActionTools(server: McpServer): void {
     'smith_replicate',
     {
       description:
-        'Generate files from a smith template. Required: name, template. Optional: path (output root), force (overwrite), skip (keep existing). Do not use force and skip together. Hooks run: root before → template before → replicate → template after → root after.',
+        'Generate files from a smith template. Required: name, template. Optional: path (output root), preset (template preset name), force (overwrite), skip (keep existing). Do not use force and skip together. Hooks run: root before → template before → replicate → template after → root after.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string(),
         template: z.string(),
         path: z.string().optional(),
+        preset: z.string().optional(),
         force: z.boolean().optional(),
         skip: z.boolean().optional(),
       },
     },
-    async ({ cwd, name, template, path, force, skip }) => {
+    async ({ cwd, name, template, path, preset, force, skip }) => {
       const runCwd = normalizeCwd(cwd);
       const root = requireSmithRoot(runCwd);
 
       await withCwd(runCwd, async () => {
-        await runReplicate({ name, template, path, force, skip });
+        await runReplicate({ name, template, path, preset, force, skip });
       });
 
       return jsonResult({
@@ -96,6 +110,7 @@ export function registerActionTools(server: McpServer): void {
         name,
         template,
         path: path ?? null,
+        preset: preset ?? null,
         force: force ?? false,
         skip: skip ?? false,
       });
