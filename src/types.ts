@@ -11,12 +11,19 @@ export type PlaceholderDelimiters = [open: string, close: string];
 export type VariableFn = (ctx: SmithContext, smith: SmithHelper) => string;
 export type HookFn = (ctx: SmithContext, smith: SmithHelper) => void | Promise<void>;
 
+export interface PresetConfig {
+  include?: string[];
+  exclude?: string[];
+}
+
 export interface SmithConfigInput {
   rootDir?: string;
   placeholder?: PlaceholderDelimiters;
   variables?: Record<string, VariableFn>;
   before?: HookFn;
   after?: HookFn;
+  defaultPreset?: string;
+  presets?: Record<string, PresetConfig>;
 }
 
 export interface SmithConfig {
@@ -25,6 +32,8 @@ export interface SmithConfig {
   variables: Record<string, VariableFn>;
   before?: HookFn;
   after?: HookFn;
+  defaultPreset?: string;
+  presets?: Record<string, PresetConfig>;
 }
 
 export type VariableMap = Record<string, string>;
@@ -88,4 +97,5 @@ export interface ReplicateOptions {
   path?: string;
   force?: boolean;
   skip?: boolean;
+  preset?: string;
 }

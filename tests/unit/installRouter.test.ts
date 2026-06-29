@@ -154,4 +154,22 @@ describe('runInstall router', () => {
     expect(process.exitCode).toBe(1);
     process.exitCode = 0;
   });
+
+  it('sets exit code for unknown install subcommand', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const hasSpy = jest.spyOn(Set.prototype, 'has').mockImplementation(function (
+      this: Set<string>,
+      value: unknown,
+    ) {
+      if (value === 'phantom') return true;
+      return Set.prototype.has.call(this, value);
+    });
+
+    await runInstall(['install', 'phantom']);
+
+    hasSpy.mockRestore();
+    expect(errorSpy).toHaveBeenCalledWith('Unknown install subcommand: phantom');
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+  });
 });

@@ -2,6 +2,8 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { loadRootConfig, loadTemplateConfig } from '../config/loadConfig';
 import { extractLocalHooks, mergeConfigs } from '../config/mergeConfig';
+import { resolvePresetSelection } from '../config/resolvePreset';
+import { validatePresets } from '../config/validatePresets';
 import { replicateTree } from '../core/replicateTree';
 import { resolveOutputPath } from '../core/resolvePath';
 import { findSmithRoot } from '../core/resolveRoot';
@@ -40,6 +42,20 @@ export async function runReplicate(options: ReplicateOptions): Promise<void> {
   const localInput = await loadTemplateConfig(templateDir);
   const merged = mergeConfigs(rootConfig, localInput);
   const localHooks = extractLocalHooks(localInput);
+
+  const presetErrors = validatePresets(merged.presets, merged.defaultPreset);
+  if (presetErrors.length > 0) {
+    throw new Error(presetErrors.join('\n'));
+  }
+
+  const presetSelection = resolvePresetSelection({
+    preset: options.preset,
+    defaultPreset: merged.defaultPreset,
+    presets: merged.presets,
+  });
+  if (presetSelection.warn) {
+    console.warn(presetSelection.warn);
+  }
 
   const defaultOutput = localInput?.rootDir
     ? resolveOutputPath(localInput.rootDir, {
@@ -88,6 +104,8 @@ export async function runReplicate(options: ReplicateOptions): Promise<void> {
       vars,
       delimiters: merged.placeholder,
       policy,
+      include: presetSelection.include,
+      exclude: presetSelection.exclude,
       onWrite: (file) => rollback.track(file),
     });
 

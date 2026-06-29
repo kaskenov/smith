@@ -1,4 +1,5 @@
 import { createFormatAPI } from '../smith/format';
+import { validatePresets } from './validatePresets';
 import type { SmithConfig, SmithConfigInput } from '../types';
 
 export function createSmithConfig(
@@ -11,11 +12,18 @@ export function createSmithConfig(
     throw new Error('placeholder must be a [open, close] tuple');
   }
 
+  const presetErrors = validatePresets(input.presets, input.defaultPreset);
+  if (presetErrors.length > 0) {
+    throw new Error(presetErrors.join('\n'));
+  }
+
   return {
     rootDir: input.rootDir,
     placeholder: input.placeholder ?? ['{{', '}}'],
     variables: input.variables ?? {},
     before: input.before,
     after: input.after,
+    defaultPreset: input.defaultPreset,
+    presets: input.presets,
   };
 }
