@@ -1,11 +1,15 @@
 import cac from 'cac';
+
 import { printGlobalHelp, printReplicateHelp } from './commands/help';
 import { runInstall } from './commands/install/router';
 import { runMcpCommand } from './commands/mcp';
 import { runReplicate } from './commands/replicate';
+import { runUpdate } from './commands/update';
 import { runUninstall } from './commands/uninstall/router';
 import { runVersion } from './commands/version';
 import { ReplicationAbortedError } from './core/replicateTree';
+import { notifyIfNewerVersion } from './package/registry';
+import { readPackageVersion } from './package/version';
 
 interface ReplicateCliOptions {
   name?: string;
@@ -24,7 +28,19 @@ function isVersionFlag(arg: string): boolean {
   return arg === '-v' || arg === '--version';
 }
 
+function shouldSkipVersionCheck(argv: string[]): boolean {
+  if (argv.some(isVersionFlag)) return true;
+  const command = argv[0];
+  if (command === 'mcp' || command === 'update') return true;
+  if (argv.length === 0 || argv.some(isHelpFlag)) return true;
+  return false;
+}
+
 export async function run(argv = process.argv.slice(2)): Promise<void> {
+  if (!shouldSkipVersionCheck(argv)) {
+    void notifyIfNewerVersion(readPackageVersion());
+  }
+
   const command = argv[0];
   const askingReplicateHelp = (command === 'replicate' || command === 'r') && argv.some(isHelpFlag);
 
@@ -45,6 +61,11 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
 
   if (command === 'mcp') {
     await runMcpCommand();
+    return;
+  }
+
+  if (command === 'update') {
+    await runUpdate();
     return;
   }
 

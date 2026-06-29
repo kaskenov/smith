@@ -29,6 +29,30 @@ describe('validatePresets', () => {
       'presets.bad must be an object with optional include and exclude arrays',
     ]);
   });
+
+  it('rejects non-string include patterns', () => {
+    expect(
+      validatePresets({ bad: { include: [1] as unknown as string[] } }),
+    ).toEqual(['presets.bad.include must be an array of path patterns']);
+  });
+
+  it('rejects non-string exclude patterns', () => {
+    expect(
+      validatePresets({ bad: { exclude: [false] as unknown as string[] } }),
+    ).toEqual(['presets.bad.exclude must be an array of path patterns']);
+  });
+
+  it('rejects non-string defaultPreset', () => {
+    expect(validatePresets({ '1': { include: ['a'] } }, 1 as unknown as string)).toEqual([
+      'defaultPreset must be a string',
+    ]);
+  });
+
+  it('rejects presets that are not an object', () => {
+    expect(validatePresets(null as unknown as Record<string, { include: string[] }>)).toEqual([
+      'presets must be an object',
+    ]);
+  });
 });
 
 describe('resolvePresetSelection', () => {
@@ -73,6 +97,18 @@ describe('resolvePresetSelection', () => {
   it('throws for unknown CLI preset', () => {
     expect(() => resolvePresetSelection({ preset: 'missing', presets })).toThrow(
       'Preset not found: missing. Available presets: core, full',
+    );
+  });
+
+  it('throws for CLI preset when presets are not configured', () => {
+    expect(() => resolvePresetSelection({ preset: 'core' })).toThrow(
+      'Preset not found: core. Available presets: (none)',
+    );
+  });
+
+  it('throws when defaultPreset is not defined in presets', () => {
+    expect(() => resolvePresetSelection({ defaultPreset: 'missing', presets })).toThrow(
+      'defaultPreset "missing" is not defined in presets',
     );
   });
 });

@@ -4,6 +4,8 @@ import {
   printInstallMcpHelp,
   printInstallSkillsHelp,
   printUninstallHelp,
+  printUninstallMcpHelp,
+  printUninstallSkillsHelp,
   printReplicateHelp,
 } from '../../src/commands/help';
 
@@ -64,5 +66,19 @@ describe('help commands', () => {
 
     expect(logs.join('\n')).toContain('smith uninstall — remove agent tooling');
     expect(logs.join('\n')).toContain('smith uninstall skills --qwen --dry-run');
+  });
+
+  it('prints uninstall mcp help', () => {
+    printUninstallMcpHelp();
+
+    expect(logs.join('\n')).toContain('smith uninstall mcp — remove MCP server config');
+    expect(logs.join('\n')).toContain('smith uninstall mcp --cursor --global --dry-run');
+  });
+
+  it('prints uninstall skills help', () => {
+    printUninstallSkillsHelp();
+
+    expect(logs.join('\n')).toContain('smith uninstall skills — remove agent skills');
+    expect(logs.join('\n')).toContain('smith uninstall skills --claude --dry-run');
   });
 });
