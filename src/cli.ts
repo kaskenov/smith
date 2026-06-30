@@ -1,6 +1,7 @@
 import cac from 'cac';
 
-import { printGlobalHelp, printListHelp, printReplicateHelp } from './commands/help';
+import { printGlobalHelp, printReplicateHelp } from './commands/help';
+import { printListHelp } from './commands/list/help';
 import { runInstall } from './commands/install/router';
 import { runList } from './commands/list';
 import { runMcpCommand } from './commands/mcp';
