@@ -6,6 +6,11 @@ jest.mock('../../src/commands/replicate', () => ({
   runReplicate: jest.fn(),
 }));
 
+jest.mock('../../src/package/registry', () => ({
+  ...jest.requireActual('../../src/package/registry'),
+  notifyIfNewerVersion: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe('cli', () => {
   beforeEach(() => {
     process.exitCode = undefined;
@@ -18,7 +23,6 @@ describe('cli', () => {
     replicateMock.mockRejectedValueOnce(new ReplicationAbortedError());
 
     await run(['replicate', '--name', 'Button', '--template', 'component']);
-    await new Promise((resolve) => setImmediate(resolve));
 
     expect(process.exitCode).toBe(0);
     expect(errorSpy).not.toHaveBeenCalled();

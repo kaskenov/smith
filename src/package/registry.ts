@@ -17,10 +17,19 @@ export async function fetchLatestVersion(): Promise<string> {
   return data['dist-tags'].latest;
 }
 
-export async function notifyIfNewerVersion(currentVersion: string): Promise<void> {
+export async function findNewerVersion(currentVersion: string): Promise<string | null> {
   try {
     const latestVersion = await fetchLatestVersion();
-    if (currentVersion !== latestVersion) {
+    return currentVersion !== latestVersion ? latestVersion : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function notifyIfNewerVersion(currentVersion: string): Promise<void> {
+  try {
+    const latestVersion = await findNewerVersion(currentVersion);
+    if (latestVersion) {
       console.log(
         `A newer version of ${PACKAGE_NAME} is available: ${latestVersion}. You are currently on version: ${currentVersion}.`,
       );

@@ -1,14 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { resolveSmithBannerContext } from '../terminal/bannerContext';
+import { printSmithBannerFromContext } from '../terminal/brand';
 import { readPackageVersion } from '../package/version';
-import { brandSmith } from '../terminal/brand';
 
-interface PackageJson {
-  description: string;
-}
-
-export function runVersion(): void {
-  const pkgPath = join(__dirname, '../../package.json');
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as PackageJson;
-  console.log(brandSmith(`smith v${readPackageVersion()} — ${pkg.description}`));
+export async function runVersion(): Promise<void> {
+  const context = await resolveSmithBannerContext({ checkForUpdate: true });
+  printSmithBannerFromContext(context, { version: readPackageVersion() });
 }

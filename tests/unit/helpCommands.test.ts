@@ -1,12 +1,22 @@
 import {
+  printGlobalDocs,
   printGlobalHelp,
+  printInstallDocs,
   printInstallHelp,
+  printInstallMcpDocs,
   printInstallMcpHelp,
+  printInstallSkillsDocs,
   printInstallSkillsHelp,
-  printUninstallHelp,
-  printUninstallMcpHelp,
-  printUninstallSkillsHelp,
+  printListDocs,
+  printListHelp,
+  printReplicateDocs,
   printReplicateHelp,
+  printUninstallDocs,
+  printUninstallHelp,
+  printUninstallMcpDocs,
+  printUninstallMcpHelp,
+  printUninstallSkillsDocs,
+  printUninstallSkillsHelp,
 } from '../../src/commands/help';
 
 describe('help commands', () => {
@@ -23,62 +33,108 @@ describe('help commands', () => {
     jest.restoreAllMocks();
   });
 
-  it('prints global help', () => {
-    printGlobalHelp();
+  it('prints global help with documentation', async () => {
+    await printGlobalHelp();
 
-    expect(logs.join('\n')).toContain('smith — I replicate');
-    expect(logs.join('\n')).toContain('smith install --local');
-    expect(logs.join('\n')).toContain('smith replicate --name Button --template component');
+    const output = logs.join('\n');
+    expect(output).toContain('Never Send A Human To Do A Machine');
+    expect(output).toContain('Documentation:');
+    expect(output).toContain('smith list');
+    expect(output).toContain('Project setup');
+    expect(output).not.toContain('Examples:');
   });
 
-  it('prints replicate help', () => {
+  it('prints replicate help with documentation', () => {
     printReplicateHelp();
 
-    expect(logs.join('\n')).toContain('smith replicate — create from template');
-    expect(logs.join('\n')).toContain('--force');
-    expect(logs.join('\n')).toContain('--skip');
+    const output = logs.join('\n');
+    expect(output).toContain('smith replicate — create from template');
+    expect(output).toContain('--force');
+    expect(output).toContain('Documentation:');
+    expect(output).toContain('Nested templates');
+    expect(output).not.toContain('Examples:');
   });
 
-  it('prints install help', () => {
+  it('prints list help with documentation', () => {
+    printListHelp();
+
+    const output = logs.join('\n');
+    expect(output).toContain('smith list — project templates');
+    expect(output).toContain('Documentation:');
+    expect(output).toContain('smith install list');
+    expect(output).not.toContain('Examples:');
+  });
+
+  it('prints install help with documentation', () => {
     printInstallHelp();
 
-    expect(logs.join('\n')).toContain('smith install — agent tooling');
-    expect(logs.join('\n')).toContain('--qwen');
-    expect(logs.join('\n')).toContain('smith install skills');
+    const output = logs.join('\n');
+    expect(output).toContain('smith install — agent tooling');
+    expect(output).toContain('--qwen');
+    expect(output).toContain('Documentation:');
+    expect(output).toContain('MCP config paths');
+    expect(output).not.toContain('Examples:');
   });
 
-  it('prints install mcp help', () => {
+  it('prints install mcp help with documentation', () => {
     printInstallMcpHelp();
 
-    expect(logs.join('\n')).toContain('smith install mcp — MCP server config');
-    expect(logs.join('\n')).toContain('smith install mcp --qwen --local --dry-run');
+    const output = logs.join('\n');
+    expect(output).toContain('smith install mcp — MCP server config');
+    expect(output).toContain('Documentation:');
+    expect(output).not.toContain('Examples:');
   });
 
-  it('prints install skills help', () => {
+  it('prints install skills help with documentation', () => {
     printInstallSkillsHelp();
 
-    expect(logs.join('\n')).toContain('smith install skills — optional agent skill');
-    expect(logs.join('\n')).toContain('smith install skills --claude --dry-run');
+    const output = logs.join('\n');
+    expect(output).toContain('smith install skills — optional agent skill');
+    expect(output).toContain('Documentation:');
+    expect(output).not.toContain('Examples:');
   });
 
-  it('prints uninstall help', () => {
+  it('prints uninstall help with documentation', () => {
     printUninstallHelp();
 
-    expect(logs.join('\n')).toContain('smith uninstall — remove agent tooling');
-    expect(logs.join('\n')).toContain('smith uninstall skills --qwen --dry-run');
+    const output = logs.join('\n');
+    expect(output).toContain('smith uninstall — remove agent tooling');
+    expect(output).toContain('Documentation:');
+    expect(output).not.toContain('Examples:');
   });
 
-  it('prints uninstall mcp help', () => {
+  it('prints uninstall mcp help with documentation', () => {
     printUninstallMcpHelp();
 
-    expect(logs.join('\n')).toContain('smith uninstall mcp — remove MCP server config');
-    expect(logs.join('\n')).toContain('smith uninstall mcp --cursor --global --dry-run');
+    const output = logs.join('\n');
+    expect(output).toContain('smith uninstall mcp — remove MCP server config');
+    expect(output).toContain('Documentation:');
+    expect(output).not.toContain('Examples:');
   });
 
-  it('prints uninstall skills help', () => {
+  it('prints uninstall skills help with documentation', () => {
     printUninstallSkillsHelp();
 
-    expect(logs.join('\n')).toContain('smith uninstall skills — remove agent skills');
-    expect(logs.join('\n')).toContain('smith uninstall skills --claude --dry-run');
+    const output = logs.join('\n');
+    expect(output).toContain('smith uninstall skills — remove agent skills');
+    expect(output).toContain('Documentation:');
+    expect(output).not.toContain('Examples:');
+  });
+
+  it('re-exports documentation helpers from docs', () => {
+    printGlobalDocs();
+    printReplicateDocs();
+    printListDocs();
+    printInstallDocs();
+    printInstallMcpDocs();
+    printInstallSkillsDocs();
+    printUninstallDocs();
+    printUninstallMcpDocs();
+    printUninstallSkillsDocs();
+
+    const output = logs.join('\n');
+    expect(output).toContain('Documentation:');
+    expect(output).toContain('Project setup');
+    expect(output).toContain('MCP config paths');
   });
 });

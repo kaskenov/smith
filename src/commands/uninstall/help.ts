@@ -1,4 +1,5 @@
 import { brandSmith } from '../../terminal/brand';
+import { printUninstallDocs, printUninstallMcpDocs, printUninstallSkillsDocs } from '../docs';
 
 const AGENT_FLAGS = `  --cursor            Target Cursor only (default: all agents)
   --claude            Target Claude Code only (default: all agents)
@@ -21,9 +22,7 @@ export function printUninstallHelp(): void {
   console.log('  --dry-run           Print actions without modifying files');
   console.log('  -h, --help          Show help');
   console.log('');
-  console.log('Examples:');
-  console.log('  smith uninstall mcp --local');
-  console.log('  smith uninstall skills --qwen --dry-run');
+  printUninstallDocs();
 }
 
 export function printUninstallMcpHelp(): void {
@@ -39,9 +38,7 @@ export function printUninstallMcpHelp(): void {
   console.log('  --dry-run           Print actions without modifying files');
   console.log('  -h, --help          Show uninstall mcp help');
   console.log('');
-  console.log('Examples:');
-  console.log('  smith uninstall mcp --local');
-  console.log('  smith uninstall mcp --cursor --global --dry-run');
+  printUninstallMcpDocs();
 }
 
 export function printUninstallSkillsHelp(): void {
@@ -57,7 +54,5 @@ export function printUninstallSkillsHelp(): void {
   console.log('  --dry-run           Print actions without modifying files');
   console.log('  -h, --help          Show uninstall skills help');
   console.log('');
-  console.log('Examples:');
-  console.log('  smith uninstall skills --local');
-  console.log('  smith uninstall skills --claude --dry-run');
+  printUninstallSkillsDocs();
 }
