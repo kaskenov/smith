@@ -1,4 +1,16 @@
-import { brandSmith } from '../terminal/brand';
+import { resolveSmithBannerContext } from '../terminal/bannerContext';
+import { brandSmith, printSmithBannerFromContext } from '../terminal/brand';
+import {
+  printGlobalDocs,
+  printInstallDocs,
+  printInstallMcpDocs,
+  printInstallSkillsDocs,
+  printListDocs,
+  printReplicateDocs,
+  printUninstallDocs,
+  printUninstallMcpDocs,
+  printUninstallSkillsDocs,
+} from './docs';
 
 export {
   printInstallHelp,
@@ -12,14 +24,16 @@ export {
   printUninstallSkillsHelp,
 } from './uninstall/help';
 
-export function printGlobalHelp(): void {
-  console.log(brandSmith('smith — I replicate'));
+export async function printGlobalHelp(): Promise<void> {
+  const context = await resolveSmithBannerContext();
+  printSmithBannerFromContext(context);
   console.log('');
   console.log('Usage:');
   console.log('  smith [command] [flags]');
   console.log('');
   console.log('Commands:');
   console.log('  replicate, r   Create a component from a template');
+  console.log('  list           List templates in the current smith project');
   console.log('  install        Install smith MCP server (default)');
   console.log('  uninstall      Remove smith MCP server and agent skills');
   console.log('  update         Update smith, its MCP, and skills');
@@ -28,13 +42,7 @@ export function printGlobalHelp(): void {
   console.log('  -h, --help     Show help');
   console.log('  -v, --version  Show version');
   console.log('');
-  console.log('Examples:');
-  console.log('  smith replicate --name Button --template component');
-  console.log('  smith r --name card-item --template ui --path src/features');
-  console.log('  smith replicate --name Button --template component --force');
-  console.log('  smith install --local');
-  console.log('  smith install skills --cursor');
-  console.log('  smith uninstall mcp --local');
+  printGlobalDocs();
 }
 
 export function printReplicateHelp(): void {
@@ -52,8 +60,29 @@ export function printReplicateHelp(): void {
   console.log('  --skip                 Keep existing conflicting files');
   console.log('  -h, --help             Show replicate help');
   console.log('');
-  console.log('Examples:');
-  console.log('  smith replicate --name Button --template component');
-  console.log('  smith replicate --name UserCard --template component --path src/components');
-  console.log('  smith replicate --name Button --template component --skip');
+  printReplicateDocs();
 }
+
+export function printListHelp(): void {
+  console.log(brandSmith('smith list — project templates'));
+  console.log('');
+  console.log('Usage:');
+  console.log('  smith list');
+  console.log('');
+  console.log('Flags:');
+  console.log('  -h, --help             Show list help');
+  console.log('');
+  printListDocs();
+}
+
+export {
+  printGlobalDocs,
+  printInstallDocs,
+  printInstallMcpDocs,
+  printInstallSkillsDocs,
+  printListDocs,
+  printReplicateDocs,
+  printUninstallDocs,
+  printUninstallMcpDocs,
+  printUninstallSkillsDocs,
+};

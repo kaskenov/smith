@@ -6,7 +6,9 @@ import { registerTools } from './tools';
 
 export async function runMcpServer(): Promise<void> {
   const currentVersion = readPackageVersion();
-  void notifyIfNewerVersion(currentVersion);
+  if (process.env.SMITH_SKIP_UPDATE_CHECK !== '1') {
+    void notifyIfNewerVersion(currentVersion);
+  }
 
   const server = new McpServer({ name: 'smith', version: currentVersion });
   registerTools(server);

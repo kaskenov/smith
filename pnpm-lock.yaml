@@ -20,9 +20,9 @@ importers:
       cac:
         specifier: 6.7.14
         version: 6.7.14
-      picocolors:
-        specifier: 1.1.1
-        version: 1.1.1
+      figlet:
+        specifier: 1.8.0
+        version: 1.8.0
       picomatch:
         specifier: 4.0.4
         version: 4.0.4
@@ -51,6 +51,9 @@ importers:
       '@semantic-release/npm':
         specifier: 13.1.5
         version: 13.1.5(semantic-release@25.0.0(typescript@5.8.2))
+      '@types/figlet':
+        specifier: 1.7.0
+        version: 1.7.0
       '@types/gulp':
         specifier: 4.0.18
         version: 4.0.18
@@ -777,6 +780,9 @@ packages:
 
   '@types/expect@1.20.4':
     resolution: {integrity: sha512-Q5Vn3yjTDyCMV50TB6VRIbQNxSE4OmZR86VSbGaNpfUolm0iePBB4KdEEHmxoY5sT2+2DIvXW0rvMDP2nHZ4Mg==}
+
+  '@types/figlet@1.7.0':
+    resolution: {integrity: sha512-KwrT7p/8Eo3Op/HBSIwGXOsTZKYiM9NpWRBJ5sVjWP/SmlS+oxxRvJht/FNAtliJvja44N3ul1yATgohnVBV0Q==}
 
   '@types/glob-stream@8.0.3':
     resolution: {integrity: sha512-vctgrT9AH/GK3TRaIbRUU0TZn12GBU4kzelZdPyJp1Sc8L/6Wrq21UrtN4+x4saqTg6COUIUtFV6JSYcVln/EQ==}
@@ -1561,6 +1567,11 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  figlet@1.8.0:
+    resolution: {integrity: sha512-chzvGjd+Sp7KUvPHZv6EXV5Ir3Q7kYNpCr4aHrRW79qFtTefmQZNny+W1pW9kf5zeE6dikku2W50W/wAH2xWgw==}
+    engines: {node: '>= 0.4.0'}
+    hasBin: true
 
   figures@2.0.0:
     resolution: {integrity: sha512-Oa2M9atig69ZkfwiApY8F2Yy+tzMbazyvqv21R0NsSC8floSOC09BbT1ITWAdoMGQvJ/aZnR1KMwdx9tvHnTNA==}
@@ -4444,6 +4455,8 @@ snapshots:
 
   '@types/expect@1.20.4': {}
 
+  '@types/figlet@1.7.0': {}
+
   '@types/glob-stream@8.0.3':
     dependencies:
       '@types/node': 22.13.10
@@ -5261,6 +5274,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:
       picomatch: 4.0.4
+
+  figlet@1.8.0: {}
 
   figures@2.0.0:
     dependencies:
