@@ -1,7 +1,8 @@
 import cac from 'cac';
 
-import { printGlobalHelp, printReplicateHelp } from './commands/help';
+import { printGlobalHelp, printListHelp, printReplicateHelp } from './commands/help';
 import { runInstall } from './commands/install/router';
+import { runList } from './commands/list';
 import { runMcpCommand } from './commands/mcp';
 import { runReplicate } from './commands/replicate';
 import { runUpdate } from './commands/update';
@@ -29,6 +30,7 @@ function isVersionFlag(arg: string): boolean {
 }
 
 function shouldSkipVersionCheck(argv: string[]): boolean {
+  if (process.env.SMITH_SKIP_UPDATE_CHECK === '1') return true;
   if (argv.some(isVersionFlag)) return true;
   const command = argv[0];
   if (command === 'mcp' || command === 'update') return true;
@@ -45,7 +47,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   const askingReplicateHelp = (command === 'replicate' || command === 'r') && argv.some(isHelpFlag);
 
   if (argv.some(isVersionFlag)) {
-    runVersion();
+    await runVersion();
     return;
   }
 
@@ -69,12 +71,27 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
+  if (command === 'list') {
+    if (argv.some(isHelpFlag)) {
+      printListHelp();
+      return;
+    }
+    try {
+      runList();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
   if (argv.length === 0 || (argv.some(isHelpFlag) && command !== 'install' && command !== 'uninstall')) {
     if (askingReplicateHelp) {
       printReplicateHelp();
       return;
     }
-    printGlobalHelp();
+    await printGlobalHelp();
     return;
   }
 

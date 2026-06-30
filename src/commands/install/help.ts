@@ -1,4 +1,5 @@
 import { brandSmith } from '../../terminal/brand';
+import { printInstallDocs, printInstallMcpDocs, printInstallSkillsDocs } from '../docs';
 
 const AGENT_FLAGS = `  --cursor            Target Cursor only (default: all agents)
   --claude            Target Claude Code only (default: all agents)
@@ -27,11 +28,7 @@ export function printInstallHelp(): void {
   console.log('Optional skill:');
   console.log('  smith — agent guide for smith projects (install with: smith install skills)');
   console.log('');
-  console.log('Examples:');
-  console.log('  smith install --local');
-  console.log('  smith install mcp --qwen --global');
-  console.log('  smith install skills --cursor');
-  console.log('  smith install list --claude');
+  printInstallDocs();
 }
 
 export function printInstallMcpHelp(): void {
@@ -49,10 +46,7 @@ export function printInstallMcpHelp(): void {
   console.log('  --dry-run           Print config without writing files');
   console.log('  -h, --help          Show install mcp help');
   console.log('');
-  console.log('Examples:');
-  console.log('  smith install --local');
-  console.log('  smith install mcp --qwen --local --dry-run');
-  console.log('  smith install mcp --cursor --global --force');
+  printInstallMcpDocs();
 }
 
 export function printInstallSkillsHelp(): void {
@@ -72,8 +66,5 @@ export function printInstallSkillsHelp(): void {
   console.log('Skill installed:');
   console.log('  smith — replicate, templates, config, and MCP tool reference');
   console.log('');
-  console.log('Examples:');
-  console.log('  smith install skills --local');
-  console.log('  smith install skills --qwen --global');
-  console.log('  smith install skills --claude --dry-run');
+  printInstallSkillsDocs();
 }
