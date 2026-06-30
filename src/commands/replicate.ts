@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { listAvailableTemplates } from '../core/listTemplates';
 import { loadRootConfig, loadTemplateConfig } from '../config/loadConfig';
 import { extractLocalHooks, mergeConfigs } from '../config/mergeConfig';
 import { resolvePresetSelection } from '../config/resolvePreset';
@@ -12,15 +13,6 @@ import { createRollback } from '../core/rollback';
 import { createSmith } from '../smith/createSmith';
 import { brandSmith } from '../terminal/brand';
 import type { ConflictPolicy, ReplicateOptions, SmithContext } from '../types';
-
-function listAvailableTemplates(projectRoot: string): string[] {
-  const templatesDir = join(projectRoot, '.smith', 'templates');
-  if (!existsSync(templatesDir)) return [];
-  return readdirSync(templatesDir).filter((entry) => {
-    const fullPath = join(templatesDir, entry);
-    return statSync(fullPath).isDirectory();
-  }).sort();
-}
 
 export async function runReplicate(options: ReplicateOptions): Promise<void> {
   const cwd = process.cwd();
