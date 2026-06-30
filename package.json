@@ -1,6 +1,6 @@
 {
   "name": "@kaskenov/smith",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Template engine for scaffolding, templating, and code generation.",
   "author": {
     "name": "Pavel Kaskenov",

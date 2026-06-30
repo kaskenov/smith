@@ -1,5 +1,12 @@
 # Changelog
 
+# [2.2.0](https://github.com/kaskenov/smith/compare/v2.1.0...v2.2.0) (2026-06-30)
+
+
+### Features
+
+* templates list command added. ([71f9765](https://github.com/kaskenov/smith/commit/71f9765e662ee3bcf1ed95911502358c36d0ef66))
+
 # [2.1.0](https://github.com/kaskenov/smith/compare/v2.0.0...v2.1.0) (2026-06-29)
 
 
