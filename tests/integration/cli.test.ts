@@ -54,6 +54,7 @@ describe('cli smoke', () => {
       const out = execFileSync('node', [join(__dirname, '../../dist/cli.js'), 'list'], {
         cwd: root,
         encoding: 'utf8',
+        env: { ...process.env, SMITH_SKIP_UPDATE_CHECK: '1' },
       });
       expect(out.trim()).toBe('component');
     } finally {
