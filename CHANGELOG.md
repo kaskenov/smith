@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/kaskenov/smith/compare/v2.2.0...v2.2.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **update:** made update detect current package manager ([3825800](https://github.com/kaskenov/smith/commit/38258003a7eae3051b07f55358c9490f3396b8d9))
+
 # [2.2.0](https://github.com/kaskenov/smith/compare/v2.1.0...v2.2.0) (2026-06-30)
 
 
