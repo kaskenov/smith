@@ -40,6 +40,18 @@ export type VariableMap = Record<string, string>;
 
 export type ConflictPolicy = 'prompt' | 'force' | 'skip';
 
+export interface ConflictInput {
+  target: string;
+  existing: string;
+  incoming: string;
+}
+
+export type ConflictResolution =
+  | { action: 'write' }
+  | { action: 'skip' }
+  | { action: 'abort' }
+  | { action: 'merge'; content: string };
+
 export interface FormatAPI {
   pascal(input: string): string;
   camel(input: string): string;

@@ -67,9 +67,17 @@ export async function replicateTree(options: {
     mkdirSync(dirname(dest), { recursive: true });
 
     if (existsSync(dest)) {
-      const action = await resolveConflict(policy, dest);
-      if (action === 'abort') throw new ReplicationAbortedError();
-      if (action === 'skip') { skipped.push(dest); continue; }
+      const incoming = substitute(readFileSync(srcPath, 'utf8'), vars, delimiters);
+      const existing = readFileSync(dest, 'utf8');
+      const resolution = await resolveConflict(policy, { target: dest, existing, incoming });
+      if (resolution.action === 'abort') throw new ReplicationAbortedError();
+      if (resolution.action === 'skip') { skipped.push(dest); continue; }
+      if (resolution.action === 'merge') {
+        writeFileSync(dest, resolution.content, 'utf8');
+        onWrite?.(dest);
+        written.push(dest);
+        continue;
+      }
     }
 
     const content = readFileSync(srcPath, 'utf8');

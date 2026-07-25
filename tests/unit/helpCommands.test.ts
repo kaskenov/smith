@@ -40,7 +40,9 @@ describe('help commands', () => {
     expect(output).toContain('Never Send A Human To Do A Machine');
     expect(output).toContain('Documentation:');
     expect(output).toContain('smith list');
+    expect(output).toContain('templates, t');
     expect(output).toContain('Project setup');
+    expect(output).toContain('Global templates');
     expect(output).not.toContain('Examples:');
   });
 
@@ -59,7 +61,7 @@ describe('help commands', () => {
     printListHelp();
 
     const output = logs.join('\n');
-    expect(output).toContain('smith list — project templates');
+    expect(output).toContain('smith list — local and global templates');
     expect(output).toContain('Documentation:');
     expect(output).toContain('smith install list');
     expect(output).not.toContain('Examples:');

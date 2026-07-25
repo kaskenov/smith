@@ -75,7 +75,7 @@ describe('replicateTree', () => {
     writeFileSync(join(templateDir, '{{name}}.txt'), 'Hello {{name}}', 'utf8');
     writeFileSync(join(outputRoot, 'Button.txt'), 'keep me', 'utf8');
 
-    jest.spyOn(conflictsModule, 'resolveConflict').mockResolvedValue('skip');
+    jest.spyOn(conflictsModule, 'resolveConflict').mockResolvedValue({ action: 'skip' });
 
     const result = await replicateTree({
       templateDir,
@@ -87,6 +87,33 @@ describe('replicateTree', () => {
 
     expect(result.skipped).toContain(join(outputRoot, 'Button.txt'));
     expect(readFileSync(join(outputRoot, 'Button.txt'), 'utf8')).toBe('keep me');
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('writes merged content when policy is prompt and merge is chosen', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-tree-merge-'));
+    const templateDir = join(root, 'template');
+    const outputRoot = join(root, 'out');
+    mkdirSync(templateDir, { recursive: true });
+    mkdirSync(outputRoot, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.txt'), 'Hello {{name}}', 'utf8');
+    writeFileSync(join(outputRoot, 'Button.txt'), 'keep me', 'utf8');
+
+    jest.spyOn(conflictsModule, 'resolveConflict').mockResolvedValue({
+      action: 'merge',
+      content: 'merged content',
+    });
+
+    const result = await replicateTree({
+      templateDir,
+      outputRoot,
+      vars: { name: 'Button' },
+      delimiters: ['{{', '}}'],
+      policy: 'prompt',
+    });
+
+    expect(result.written).toContain(join(outputRoot, 'Button.txt'));
+    expect(readFileSync(join(outputRoot, 'Button.txt'), 'utf8')).toBe('merged content');
     rmSync(root, { recursive: true, force: true });
   });
 
