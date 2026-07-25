@@ -1,4 +1,11 @@
-import type { SmithConfig, SmithConfigInput } from '../types';
+import type { HookFn, SmithConfig, SmithConfigInput } from '../types';
+
+export function emptySmithConfig(): SmithConfig {
+  return {
+    placeholder: ['{{', '}}'],
+    variables: {},
+  };
+}
 
 export function mergeConfigs(root: SmithConfig, local?: SmithConfigInput): SmithConfig {
   if (!local) return root;
@@ -13,9 +20,24 @@ export function mergeConfigs(root: SmithConfig, local?: SmithConfigInput): Smith
   };
 }
 
-export function extractLocalHooks(local?: SmithConfigInput) {
+export function mergeConfigLayers(
+  globalConfig: SmithConfig,
+  projectConfig: SmithConfig,
+  templateConfig?: SmithConfigInput,
+): SmithConfig {
+  return mergeConfigs(mergeConfigs(globalConfig, projectConfig), templateConfig);
+}
+
+export function extractHooks(config?: SmithConfigInput | SmithConfig): {
+  before?: HookFn;
+  after?: HookFn;
+} {
   return {
-    before: local?.before,
-    after: local?.after,
+    before: config?.before,
+    after: config?.after,
   };
+}
+
+export function extractLocalHooks(local?: SmithConfigInput) {
+  return extractHooks(local);
 }

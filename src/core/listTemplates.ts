@@ -1,13 +1,11 @@
-import { existsSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { listAvailableTemplateNames, listLocalTemplates, listTemplateNamesInDir } from './globalTemplates';
 
-export function listAvailableTemplates(projectRoot: string): string[] {
-  const templatesDir = join(projectRoot, '.smith', 'templates');
-  if (!existsSync(templatesDir)) return [];
-  return readdirSync(templatesDir)
-    .filter((entry) => {
-      const fullPath = join(templatesDir, entry);
-      return statSync(fullPath).isDirectory();
-    })
-    .sort();
+export { listTemplateNamesInDir };
+
+export function listAvailableTemplates(projectRoot: string | null): string[] {
+  return listAvailableTemplateNames(projectRoot);
+}
+
+export function listProjectTemplates(projectRoot: string): string[] {
+  return listLocalTemplates(projectRoot);
 }

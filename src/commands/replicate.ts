@@ -1,10 +1,10 @@
-import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { listAvailableTemplates } from '../core/listTemplates';
+import { resolve } from 'node:path';
 import { loadRootConfig, loadTemplateConfig } from '../config/loadConfig';
-import { extractLocalHooks, mergeConfigs } from '../config/mergeConfig';
+import { loadGlobalConfig } from '../config/loadGlobalConfig';
+import { extractHooks, mergeConfigLayers } from '../config/mergeConfig';
 import { resolvePresetSelection } from '../config/resolvePreset';
 import { validatePresets } from '../config/validatePresets';
+import { resolveTemplateDir } from '../core/globalTemplates';
 import { replicateTree } from '../core/replicateTree';
 import { resolveOutputPath } from '../core/resolvePath';
 import { findSmithRoot } from '../core/resolveRoot';
@@ -17,23 +17,16 @@ import type { ConflictPolicy, ReplicateOptions, SmithContext } from '../types';
 export async function runReplicate(options: ReplicateOptions): Promise<void> {
   const cwd = process.cwd();
   const discoveredRoot = findSmithRoot(cwd);
-  if (!discoveredRoot) {
-    throw new Error('No .smith directory found. Run from a smith project.');
-  }
+  const { templateDir } = resolveTemplateDir(discoveredRoot, options.template);
 
-  const rootConfig = await loadRootConfig(discoveredRoot);
-  const projectRoot = rootConfig.rootDir ? resolve(discoveredRoot, rootConfig.rootDir) : discoveredRoot;
-  const templateDir = join(projectRoot, '.smith', 'templates', options.template);
+  const globalConfig = await loadGlobalConfig();
+  const projectConfig = await loadRootConfig(discoveredRoot);
+  const templateConfig = await loadTemplateConfig(templateDir);
+  const merged = mergeConfigLayers(globalConfig, projectConfig, templateConfig);
 
-  if (!existsSync(templateDir)) {
-    const available = listAvailableTemplates(projectRoot);
-    const list = available.length > 0 ? available.join(', ') : '(none)';
-    throw new Error(`Template not found: ${options.template}. Available templates: ${list}`);
-  }
-
-  const localInput = await loadTemplateConfig(templateDir);
-  const merged = mergeConfigs(rootConfig, localInput);
-  const localHooks = extractLocalHooks(localInput);
+  const globalHooks = extractHooks(globalConfig);
+  const projectHooks = extractHooks(projectConfig);
+  const templateHooks = extractHooks(templateConfig);
 
   const presetErrors = validatePresets(merged.presets, merged.defaultPreset);
   if (presetErrors.length > 0) {
@@ -49,17 +42,23 @@ export async function runReplicate(options: ReplicateOptions): Promise<void> {
     console.warn(presetSelection.warn);
   }
 
-  const defaultOutput = localInput?.rootDir
-    ? resolveOutputPath(localInput.rootDir, {
+  const outputBase = discoveredRoot
+    ? projectConfig.rootDir
+      ? resolve(discoveredRoot, projectConfig.rootDir)
+      : discoveredRoot
+    : cwd;
+
+  const defaultOutput = templateConfig?.rootDir
+    ? resolveOutputPath(templateConfig.rootDir, {
         cwd,
-        root: projectRoot,
-        defaultOutput: projectRoot,
+        root: outputBase,
+        defaultOutput: outputBase,
       })
-    : projectRoot;
+    : outputBase;
 
   const outputPath = resolveOutputPath(options.path, {
     cwd,
-    root: projectRoot,
+    root: outputBase,
     defaultOutput,
   });
 
@@ -68,23 +67,26 @@ export async function runReplicate(options: ReplicateOptions): Promise<void> {
     path: outputPath,
     template: options.template,
     cwd,
-    root: projectRoot,
+    root: outputBase,
   };
 
   const smith = createSmith(ctx, {
     templateDir,
-    allowedRoots: [outputPath, projectRoot],
+    allowedRoots: [outputPath, outputBase, discoveredRoot ?? cwd],
   });
 
   const rollback = createRollback();
   const policy: ConflictPolicy = options.force ? 'force' : options.skip ? 'skip' : 'prompt';
 
   try {
-    if (merged.before) {
-      await merged.before(ctx, smith);
+    if (globalHooks.before) {
+      await globalHooks.before(ctx, smith);
     }
-    if (localHooks.before) {
-      await localHooks.before(ctx, smith);
+    if (projectHooks.before) {
+      await projectHooks.before(ctx, smith);
+    }
+    if (templateHooks.before) {
+      await templateHooks.before(ctx, smith);
     }
 
     const vars = resolveVariables(merged, ctx, smith);
@@ -101,11 +103,14 @@ export async function runReplicate(options: ReplicateOptions): Promise<void> {
       onWrite: (file) => rollback.track(file),
     });
 
-    if (localHooks.after) {
-      await localHooks.after(ctx, smith);
+    if (templateHooks.after) {
+      await templateHooks.after(ctx, smith);
     }
-    if (merged.after) {
-      await merged.after(ctx, smith);
+    if (projectHooks.after) {
+      await projectHooks.after(ctx, smith);
+    }
+    if (globalHooks.after) {
+      await globalHooks.after(ctx, smith);
     }
 
     console.log(brandSmith(`smith replicated ${options.template} -> ${outputPath}`));

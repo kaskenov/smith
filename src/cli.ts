@@ -5,6 +5,7 @@ import { runInstall } from './commands/install/router';
 import { runList } from './commands/list';
 import { runMcpCommand } from './commands/mcp';
 import { runReplicate } from './commands/replicate';
+import { runTemplates } from './commands/templates/router';
 import { runUpdate } from './commands/update';
 import { runUninstall } from './commands/uninstall/router';
 import { runVersion } from './commands/version';
@@ -86,7 +87,19 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
-  if (argv.length === 0 || (argv.some(isHelpFlag) && command !== 'install' && command !== 'uninstall')) {
+  if (command === 'templates' || command === 't') {
+    await runTemplates(argv);
+    return;
+  }
+
+  if (
+    argv.length === 0 ||
+    (argv.some(isHelpFlag) &&
+      command !== 'install' &&
+      command !== 'uninstall' &&
+      command !== 'templates' &&
+      command !== 't')
+  ) {
     if (askingReplicateHelp) {
       printReplicateHelp();
       return;

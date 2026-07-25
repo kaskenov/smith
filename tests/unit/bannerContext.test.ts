@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { getGlobalTemplatesDir } from '../../src/core/globalTemplates';
 import { resolveProjectContext, resolveSmithBannerContext } from '../../src/terminal/bannerContext';
 import * as registryModule from '../../src/package/registry';
 
@@ -16,8 +17,13 @@ describe('bannerContext', () => {
     jest.restoreAllMocks();
   });
 
-  it('returns no project context outside a smith project', () => {
+  it('returns no project context outside a smith project without globals', () => {
     expect(resolveProjectContext(tempDir)).toBeUndefined();
+  });
+
+  it('shows global templates outside a smith project', () => {
+    mkdirSync(join(getGlobalTemplatesDir(), 'frontend-app'), { recursive: true });
+    expect(resolveProjectContext(tempDir)).toBe('Global templates: frontend-app');
   });
 
   it('shows project context inside a smith project', () => {
@@ -26,7 +32,7 @@ describe('bannerContext', () => {
     writeFileSync(join(smithDir, '{{name}}.txt'), 'hello', 'utf8');
 
     expect(resolveProjectContext(tempDir)).toBe(
-      `Project: ${basename(tempDir)} · templates: component`,
+      `Project: ${basename(tempDir)} · templates: component (local)`,
     );
   });
 
@@ -37,7 +43,7 @@ describe('bannerContext', () => {
     const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(tempDir);
 
     expect(resolveProjectContext()).toBe(
-      `Project: ${basename(tempDir)} · templates: component`,
+      `Project: ${basename(tempDir)} · templates: component (local)`,
     );
 
     cwdSpy.mockRestore();

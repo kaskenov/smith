@@ -96,6 +96,31 @@ project/
         {{name}}.spec.ts
 ```
 
+## Global templates
+
+User-global store under `~/.smith/`:
+
+```
+~/.smith/
+  config.js             # shared variables (NAME_PASCAL, NAME_KEBAB, ...)
+  templates/<name>/
+  sources.json
+```
+
+```bash
+smith templates init-config
+smith templates add frontend-app --from ./path/to/template
+smith templates add frontend-app --from git@github.com:org/repo.git --path templates/frontend-app
+smith templates list
+smith list
+smith templates update
+smith templates remove frontend-app
+```
+
+`--from` accepts an existing directory (including a folder inside an npm package) or a git URL. Local project templates override global names on clash.
+
+Set `SMITH_HOME` to override the global store location (defaults to `~/.smith`).
+
 ## Root config
 
 Use `createSmithConfig` to define shared variables and hooks:
@@ -114,6 +139,8 @@ module.exports = createSmithConfig((smith) => ({
 }));
 ```
 
+Config merge order: `~/.smith/config.js` → project `.smith/config.js` → template `config.js` (later wins for variables).
+
 ## Replicate
 
 ```bash
@@ -126,10 +153,12 @@ smith replicate --name Button --template component --skip
 | Flag | Description |
 |------|-------------|
 | `--name` | Source value for variable resolution (required) |
-| `--template` | Template folder under `.smith/templates/` (required) |
+| `--template` | Local or global template name (required) |
 | `--path` | Output root directory (optional) |
 | `--force` | Overwrite existing files |
 | `--skip` | Skip existing files |
+
+Works without a project `.smith/` when the template is installed globally.
 
 ## Template local config
 
@@ -153,7 +182,7 @@ module.exports = createSmithConfig(() => ({
 }));
 ```
 
-Local config merges with the root config. Variables with the same key are overridden by the template. Hook order is: root before → local before → replicate → local after → root after.
+Config layers merge global → project → template. Variables with the same key are overridden by later layers. Hook order: global before → project before → template before → replicate → afters reverse.
 
 ## Nested templates
 

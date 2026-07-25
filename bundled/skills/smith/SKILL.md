@@ -1,101 +1,116 @@
 ---
 name: smith
 description: >-
-  Work with smith template projects (.smith/): replicate templates, scaffold configs,
-  validate setup, and manage placeholders/hooks. Use when the user mentions smith,
-  smith replicate, .smith/templates, createSmithConfig, template scaffolding, or
-  smith MCP tools (smith_replicate, smith_validate, smith_init).
+  Work with smith template projects (.smith/) and global templates (~/.smith/):
+  replicate templates, scaffold configs, validate setup, manage global templates
+  from path/git, and use placeholders/hooks. Use when the user mentions smith,
+  smith replicate, smith templates, .smith/templates, createSmithConfig, or
+  smith MCP tools (smith_replicate, smith_validate, smith_templates_add).
 ---
 # Smith agent guide
 
-Smith generates files from folder templates under `.smith/templates/` with `{{placeholder}}` substitution in paths and contents.
+Smith generates files from folder templates with `{{placeholder}}` substitution in paths and contents.
 
-**Prefer smith MCP tools** when the smith MCP server is installed. Fall back to CLI (`smith replicate`, etc.) when MCP is unavailable.
+**Prefer smith MCP tools** when the smith MCP server is installed. Fall back to CLI when MCP is unavailable.
+
+## Template locations
+
+1. **Project:** `<project>/.smith/templates/<name>/`
+2. **Global:** `~/.smith/templates/<name>/`
+
+Resolve order: local first, then global. Local always wins on name clash.
+
+## Global home (`~/.smith/`)
+
+```
+~/.smith/
+  config.js             # shared variables (NAME_PASCAL, NAME_KEBAB, ...)
+  templates/<name>/
+  sources.json          # recorded smith templates add --from metadata
+```
+
+```bash
+smith templates add frontend-app --from ./path/to/template
+smith templates add frontend-app --from git@github.com:org/repo.git --path templates/frontend-app
+smith templates list
+smith templates remove frontend-app
+smith templates update
+smith templates init-config
+```
 
 ## Project layout
 
 ```
 project/
   .smith/
-    config.js                 # root config (variables, hooks)
+    config.js
     templates/
-      component/              # template name
-        config.js             # optional per-template overrides (not copied)
+      component/
+        config.js
         {{name}}.vue
 ```
 
-- Template **name** = directory name under `.smith/templates/`
-- `config.js` inside a template configures replication only — it is **not** copied to output
-- Default placeholders: `{{name}}`, plus variables from config (e.g. `{{NAME_PASCAL}}`)
-
 ## Replicate
 
-Generate files from a template. Requires `.smith/` and the template directory.
+Works with local or global templates. Project `.smith/` is optional when the template is global.
 
-### MCP: `smith_replicate` (preferred)
+### MCP: `smith_replicate`
 
 | Param | Required | Description |
 |-------|----------|-------------|
-| `name` | yes | Source name for variables (e.g. `Button`, `my-button`) |
-| `template` | yes | Template folder under `.smith/templates/` |
-| `path` | no | Output root (defaults to project or template `rootDir`) |
-| `force` | no | Overwrite existing files |
-| `skip` | no | Skip existing files |
-
-Do not set both `force` and `skip`.
+| `name` | yes | Source name for variables |
+| `template` | yes | Local or global template name |
+| `path` | no | Output root |
+| `force` / `skip` | no | Conflict policy |
 
 ### CLI
 
 ```bash
 smith replicate --name Button --template component
-smith replicate --name Button --template component --force
-smith replicate --name Button --template component --skip
+smith list
 ```
 
-**Conflict policy:** default prompts; use `force` or `skip` (or MCP equivalents) for non-interactive runs.
-
-**Hook order:** root `before` → template `before` → file replication → template `after` → root `after`. Failures roll back writes from the current run.
+**Config merge:** global → project → template (later wins for variables).  
+**Hooks:** global before → project before → template before → replicate → afters reverse.
 
 ## Config
 
-Root: `.smith/config.js`. Optional per-template: `.smith/templates/<name>/config.js`.
+- Global: `~/.smith/config.js`
+- Project: `.smith/config.js`
+- Template: `templates/<name>/config.js` (not copied to output)
 
 ```js
 const { createSmithConfig } = require('@kaskenov/smith/dist/config/createSmithConfig');
 
 module.exports = createSmithConfig((smith) => ({
-  rootDir: 'src',
-  placeholder: ['{{', '}}'],
   variables: {
     NAME_PASCAL: (ctx, s) => s.format.pascal(ctx.name),
     NAME_KEBAB: (ctx, s) => s.format.kebab(ctx.name),
   },
-  before: async (ctx, s) => { /* ... */ },
-  after: async (ctx, s) => { /* ... */ },
 }));
 ```
 
-- `variables` merge: template keys override root
-- `before`/`after` hooks run at their stage (not merged)
-- Validate after edits with `smith_validate`
-
-## MCP tools reference
+## MCP tools
 
 | Tool | Use when |
 |------|----------|
-| `smith_project_info` | Discover project root and template names |
-| `smith_list_templates` | List templates; optional file tree for one template |
-| `smith_read_file` | Read a file under `.smith/` |
-| `smith_validate` | Validate root and/or template config loads |
+| `smith_project_info` | Project root (or null) + templates with sources |
+| `smith_list_templates` | List local/global templates; optional tree |
+| `smith_read_file` | Read file under project `.smith/` |
+| `smith_validate` | Validate global/project/template config |
 | `smith_replicate` | Generate files from a template |
-| `smith_init` | New project: create `.smith/config.js` and `templates/` |
-| `smith_create_config` | Add root config when only that file is missing |
-| `smith_create_template` | Scaffold a new template folder with optional files |
+| `smith_templates_add` | Install global template from path/git |
+| `smith_templates_remove` | Remove global template |
+| `smith_templates_update` | Re-fetch from sources.json |
+| `smith_templates_init_config` | Ensure `~/.smith/config.js` starter |
+| `smith_init` | Bootstrap project `.smith/` |
+| `smith_create_config` | Add project root config |
+| `smith_create_template` | Scaffold project template folder |
 
 ## Install agent tooling
 
 ```bash
-smith install              # MCP server (default, recommended)
-smith install skills       # optional: copies this skill to agent dirs
-smith install list         # check installed MCP and skills
+smith install
+smith install skills
+smith install list
 ```

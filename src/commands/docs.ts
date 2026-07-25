@@ -17,23 +17,36 @@ export function printGlobalDocs(): void {
     'Root config uses createSmithConfig for shared variables, placeholders, and hooks.',
     'Template folders can add config.js to override rootDir, variables, and local hooks.',
   ]);
+  printDocSection('Global templates', [
+    'User store at ~/.smith/:',
+    '  config.js              shared variables (NAME_PASCAL, NAME_KEBAB, ...)',
+    '  templates/<template>/  global templates',
+    '  sources.json           recorded add --from metadata',
+    '',
+    'smith templates add <name> --from <path|git>',
+    'smith templates list | remove | update | init-config',
+    'See: smith templates --help',
+  ]);
   printDocSection('List templates', [
     'smith list',
     '',
-    'Lists template folder names under .smith/templates/ in the current smith project.',
+    'Lists local project templates and global ~/.smith/templates (source marked).',
   ]);
   printDocSection('Replicate', [
     'smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip]',
     'smith r ...',
     '',
     '--name      Source value for template variables (required)',
-    '--template  Template folder under .smith/templates/ (required)',
+    '--template  Local or global template name (required)',
     '--path      Output root directory',
     '--preset    Preset name from template config',
     '--force     Overwrite existing files',
     '--skip      Keep existing files',
     '',
-    'Hook order: root before → template before → replicate → template after → root after.',
+    'Resolves local .smith/templates first, then ~/.smith/templates.',
+    'Works without a project .smith/ when the template is global.',
+    'Config merge: global → project → template.',
+    'Hook order: global before → project before → template before → replicate → afters reverse.',
     'See: smith replicate --help',
   ]);
   printDocSection('Install agent tooling', [
@@ -64,12 +77,12 @@ export function printReplicateDocs(): void {
   console.log('Documentation:');
   console.log('');
   printDocSection('Overview', [
-    'Generates files from a template folder under .smith/templates/.',
+    'Generates files from a local or global template folder.',
     'Placeholder substitution runs in file names and file contents.',
   ]);
   printDocSection('Required flags', [
     '--name <name>       Value exposed to template variables (e.g. Button, card-item)',
-    '--template <name>   Template folder name under .smith/templates/',
+    '--template <name>   Local (.smith/templates) or global (~/.smith/templates) name',
   ]);
   printDocSection('Optional flags', [
     '--path <path>       Override output root for generated files',
@@ -77,11 +90,18 @@ export function printReplicateDocs(): void {
     '--force             Overwrite conflicting files',
     '--skip              Keep existing conflicting files',
   ]);
-  printDocSection('Template config', [
-    'Each template may define .smith/templates/<template>/config.js.',
-    'Local config merges with root .smith/config.js.',
-    'Variables with the same key are overridden by the template.',
-    'Use defaultPreset and presets in config to filter which files replicate.',
+  printDocSection('Conflict resolution', [
+    'When a destination file already exists and neither --force nor --skip is set,',
+    'smith shows a 3-way preview (existing, incoming, unified diff) and prompts:',
+    '  Keep existing file | Overwrite with template | Merge in editor | Abort',
+    'Merge opens your $EDITOR with git-style conflict markers to combine both versions.',
+    'In non-interactive mode (no TTY), use --force or --skip.',
+  ]);
+  printDocSection('Config merge', [
+    'Layers: ~/.smith/config.js → project .smith/config.js → template config.js.',
+    'Later layers override variables, placeholder, rootDir, and presets.',
+    'Hooks: global before → project before → template before → replicate → afters reverse.',
+    'A project .smith/ is optional when using a global template.',
   ]);
   printDocSection('Nested templates', [
     'Templates can use nested folders and placeholders in directory names, e.g.:',
@@ -89,8 +109,7 @@ export function printReplicateDocs(): void {
   ]);
   printDocSection('Discover templates', [
     'smith list',
-    '',
-    'Lists available template folders in the current smith project.',
+    'smith templates list',
   ]);
 }
 
@@ -100,16 +119,41 @@ export function printListDocs(): void {
   printDocSection('Usage', [
     'smith list',
     '',
-    'Walks up from the current directory to find .smith/ and prints template folder names',
-    'from .smith/templates/, sorted alphabetically.',
+    'Lists project templates (if inside a smith project) and global ~/.smith/templates.',
+    'Local names win when both exist.',
   ]);
   printDocSection('Output', [
-    'One template name per line. If no templates exist, prints a short empty message.',
-    'If not inside a smith project, exits with an error.',
+    'One line per template: <name> (local|global).',
+    'If none exist, prints a short empty message.',
   ]);
   printDocSection('Related commands', [
+    'smith templates add <name> --from <path|git>',
     'smith replicate --name <name> --template <template>',
     'smith install list   (shows installed MCP/skills, not project templates)',
+  ]);
+}
+
+export function printTemplatesDocs(): void {
+  console.log('Documentation:');
+  console.log('');
+  printDocSection('Overview', [
+    'Manages the user-global template store under ~/.smith/.',
+    'Global config.js provides shared variables such as NAME_PASCAL and NAME_KEBAB.',
+  ]);
+  printDocSection('Add', [
+    'smith templates add <name> --from <path|git> [--path <sub>] [--ref <ref>] [--force]',
+    '',
+    '--from path   Copy an existing directory (including npm package folders)',
+    '--from git    Shallow-clone a git URL, then copy the template folder',
+    '--path        Subdirectory inside the source that is the template',
+    '--ref         Git branch or tag',
+    '--force       Overwrite an existing global template',
+  ]);
+  printDocSection('Other subcommands', [
+    'list          Local + global templates with source markers',
+    'remove        Delete a global template and its sources.json entry',
+    'update        Re-fetch from recorded sources (one name or all)',
+    'init-config   Write ~/.smith/config.js starter if missing',
   ]);
 }
 

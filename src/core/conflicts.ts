@@ -1,20 +1,46 @@
-import { select } from '@inquirer/prompts';
-import type { ConflictPolicy } from '../types';
+import { editor, select } from '@inquirer/prompts';
+import { buildMergeTemplate, formatConflictPreview } from './diffPreview';
+import type { ConflictInput, ConflictPolicy, ConflictResolution } from '../types';
 
 export async function resolveConflict(
   policy: ConflictPolicy,
-  target: string,
-): Promise<'write' | 'skip' | 'abort'> {
-  if (policy === 'force') return 'write';
-  if (policy === 'skip') return 'skip';
+  input: ConflictInput,
+): Promise<ConflictResolution> {
+  if (policy === 'force') return { action: 'write' };
+  if (policy === 'skip') return { action: 'skip' };
 
-  const answer = await select<'write' | 'skip' | 'abort'>({
-    message: `File exists: ${target}`,
+  if (!process.stdin.isTTY) {
+    throw new Error(
+      'Cannot resolve file conflicts in non-interactive mode. Use --force or --skip.',
+    );
+  }
+
+  console.log('');
+  console.log(formatConflictPreview(input.target, input.existing, input.incoming));
+  console.log('');
+
+  const choice = await select<'keep' | 'overwrite' | 'merge' | 'abort'>({
+    message: `Resolve conflict: ${input.target}`,
     choices: [
-      { name: 'Overwrite', value: 'write' },
-      { name: 'Skip', value: 'skip' },
-      { name: 'Abort', value: 'abort' },
+      { name: 'Keep existing file', value: 'keep' },
+      { name: 'Overwrite with template', value: 'overwrite' },
+      { name: 'Merge in editor', value: 'merge' },
+      { name: 'Abort replication', value: 'abort' },
     ],
   });
-  return answer;
+
+  if (choice === 'keep') return { action: 'skip' };
+  if (choice === 'overwrite') return { action: 'write' };
+  if (choice === 'abort') return { action: 'abort' };
+
+  const merged = await editor({
+    message: 'Edit merged content (remove conflict markers when done)',
+    default: buildMergeTemplate(input.existing, input.incoming),
+  });
+
+  if (merged === undefined || merged === null) {
+    return { action: 'abort' };
+  }
+
+  return { action: 'merge', content: merged };
 }

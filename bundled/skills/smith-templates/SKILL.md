@@ -8,7 +8,7 @@ description: >-
 ---
 # Smith templates
 
-Templates are folders under `.smith/templates/<name>/`. Each folder is one replicable template.
+Templates are folders under `.smith/templates/<name>/` (project) or `~/.smith/templates/<name>/` (global). Each folder is one replicable template. Local names win over global on clash. Manage globals with `smith templates add|list|remove|update`.
 
 ## Directory layout
 

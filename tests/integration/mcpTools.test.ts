@@ -81,6 +81,10 @@ describe('mcp tools integration', () => {
         'smith_project_info',
         'smith_read_file',
         'smith_replicate',
+        'smith_templates_add',
+        'smith_templates_init_config',
+        'smith_templates_remove',
+        'smith_templates_update',
         'smith_validate',
       ]);
     } finally {
@@ -136,7 +140,7 @@ describe('mcp tools integration', () => {
           arguments: { cwd: root },
         }),
       );
-      expect(templates.templates).toEqual(['component']);
+      expect(templates.templates).toEqual([{ name: 'component', source: 'local' }]);
       expect(templates.files).toBeUndefined();
     } finally {
       await cleanupPair(server, client);
@@ -159,7 +163,11 @@ describe('mcp tools integration', () => {
       expect(result).toEqual(
         expect.objectContaining({
           isError: true,
-          content: [expect.objectContaining({ text: 'Template not found: missing' })],
+          content: [
+            expect.objectContaining({
+              text: expect.stringContaining('Template not found: missing'),
+            }),
+          ],
         }),
       );
     } finally {
@@ -209,7 +217,7 @@ describe('mcp tools integration', () => {
       expect(validate).toEqual(
         expect.objectContaining({
           ok: true,
-          validated: ['root'],
+          validated: ['global', 'root'],
         }),
       );
     } finally {
@@ -235,7 +243,7 @@ describe('mcp tools integration', () => {
         }),
       );
       expect(validate.ok).toBe(true);
-      expect(validate.validated).toEqual(['root']);
+      expect(validate.validated).toEqual(['global', 'root']);
     } finally {
       process.chdir(previousCwd);
       await cleanupPair(server, client);
@@ -258,7 +266,11 @@ describe('mcp tools integration', () => {
       expect(result).toEqual(
         expect.objectContaining({
           isError: true,
-          content: [expect.objectContaining({ text: 'Template not found: missing' })],
+          content: [
+            expect.objectContaining({
+              text: expect.stringContaining('Template not found: missing'),
+            }),
+          ],
         }),
       );
     } finally {
@@ -362,7 +374,7 @@ describe('mcp tools integration', () => {
         }),
       );
       expect(info.root).toBe(root);
-      expect(info.templates).toEqual(['component']);
+      expect(info.templates).toEqual([{ name: 'component', source: 'local' }]);
 
       const templates = parseToolJson(
         await client.callTool({
@@ -506,7 +518,7 @@ describe('mcp tools integration', () => {
         }),
       );
       expect(info.root).toBe(realpathSync(root));
-      expect(info.templates).toEqual(['component']);
+      expect(info.templates).toEqual([{ name: 'component', source: 'local' }]);
     } finally {
       process.chdir(previousCwd);
       await cleanupPair(server, client);

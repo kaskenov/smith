@@ -39,12 +39,12 @@ describe('runReplicate integration', () => {
     jest.restoreAllMocks();
   });
 
-  it('throws when no smith project is found', async () => {
+  it('throws when template is missing locally and globally', async () => {
     const emptyDir = mkdtempSync(join(tmpdir(), 'smith-empty-'));
     process.chdir(emptyDir);
 
     await expect(runReplicate({ name: 'Button', template: 'component' })).rejects.toThrow(
-      'No .smith directory found. Run from a smith project.',
+      'Template not found: component. Available templates: (none)',
     );
 
     rmSync(emptyDir, { recursive: true, force: true });
@@ -209,7 +209,7 @@ describe('runReplicate integration', () => {
     );
     writeFileSync(join(root, 'a.txt'), 'existing', 'utf8');
 
-    jest.spyOn(conflictsModule, 'resolveConflict').mockResolvedValue('abort');
+    jest.spyOn(conflictsModule, 'resolveConflict').mockResolvedValue({ action: 'abort' });
 
     process.chdir(root);
     await expect(runReplicate({ name: 'Button', template: 'component' })).rejects.toThrow(
@@ -264,12 +264,12 @@ describe('runReplicate integration', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('honors rootDir from smith config', async () => {
+  it('honors rootDir from smith config for output', async () => {
     const root = mkdtempSync(join(tmpdir(), 'smith-int-rootdir-'));
     const smithDir = join(root, '.smith');
     const packageDir = join(root, 'packages', 'app');
-    const templateDir = join(packageDir, '.smith', 'templates', 'component');
-    mkdirSync(smithDir, { recursive: true });
+    const templateDir = join(smithDir, 'templates', 'component');
+    mkdirSync(packageDir, { recursive: true });
     mkdirSync(templateDir, { recursive: true });
     writeFileSync(join(templateDir, '{{name}}.txt'), 'Hello {{name}}', 'utf8');
     writeFileSync(

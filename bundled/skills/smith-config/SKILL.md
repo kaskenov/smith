@@ -14,8 +14,9 @@ Smith projects configure replication through JavaScript config files using `crea
 
 | File | Scope |
 |------|-------|
-| `.smith/config.js` | Root config — shared across all templates |
-| `.smith/templates/<template>/config.js` | Template-local overrides |
+| `~/.smith/config.js` | Global config — shared variables across machines/projects |
+| `.smith/config.js` | Project root config — shared across project templates |
+| `.smith/templates/<template>/config.js` (or global template) | Template-local overrides |
 
 ## `createSmithConfig`
 
@@ -101,19 +102,21 @@ Each variable is `(ctx, smith) => string`:
 
 Variable errors throw: `Variable "<key>" failed: <message>`.
 
-Root and template `variables` merge; **template keys override root** for the same name.
+Variables merge across layers; **later layers override earlier** for the same key: global → project → template.
 
 ## Hook order
 
 During `smith replicate`, hooks run in this fixed order:
 
-1. **Root `before`**
-2. **Local template `before`**
-3. **Replicate** — walk template tree, apply preset filters, substitute placeholders, write files
-4. **Local template `after`**
-5. **Root `after`**
+1. **Global `before`**
+2. **Project `before`**
+3. **Template `before`**
+4. **Replicate** — walk template tree, apply preset filters, substitute placeholders, write files
+5. **Template `after`**
+6. **Project `after`**
+7. **Global `after`**
 
-Local hooks are **not** merged into root — each runs at its stage. Use local `before`/`after` for template-specific setup (ensure dirs, update index files).
+Hooks are **not** merged into one function — each layer runs at its stage.
 
 On failure, writes from the current run are rolled back.
 
