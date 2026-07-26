@@ -8,7 +8,7 @@ import { resolveConflictByPolicy } from '../core/conflicts';
 import { UsageError, ValidationError } from '../core/errors';
 import { resolveTemplateDir } from '../core/resolveTemplate';
 import { assertTemplateTreeSafe, replicateTree } from '../core/replicateTree';
-import { resolveOutputPath } from '../core/resolvePath';
+import { assertRelativeConfigPath, resolveOutputPath } from '../core/resolvePath';
 import { findSmithRoot } from '../core/resolveRoot';
 import { resolveVariables } from '../core/resolveVariables';
 import { createRollback } from '../core/rollback';
@@ -18,6 +18,7 @@ import type { ConflictPolicy, ReplicateOptions, ReplicateResult, SmithContext } 
 /**
  * Resolve output base from project rootDir, falling back to global rootDir.
  * Template rootDir is a default *output path*, not the project base — handled separately.
+ * Absolute rootDir values are always rejected.
  */
 export function resolveOutputBase(
   discoveredRoot: string | null,
@@ -27,7 +28,9 @@ export function resolveOutputBase(
 ): string {
   if (!discoveredRoot) return cwd;
   const baseRootDir = projectRootDir ?? globalRootDir;
-  return baseRootDir ? resolve(discoveredRoot, baseRootDir) : discoveredRoot;
+  if (baseRootDir === undefined) return discoveredRoot;
+  assertRelativeConfigPath(baseRootDir, 'rootDir');
+  return resolve(discoveredRoot, baseRootDir);
 }
 
 export async function replicate(options: ReplicateOptions): Promise<ReplicateResult> {
@@ -72,11 +75,14 @@ export async function replicate(options: ReplicateOptions): Promise<ReplicateRes
     projectConfig.rootDir,
   );
 
+  assertRelativeConfigPath(templateConfig?.rootDir, 'template rootDir');
+
   const defaultOutput = templateConfig?.rootDir
     ? resolveOutputPath(templateConfig.rootDir, {
         cwd,
         root: outputBase,
         defaultOutput: outputBase,
+        allowAbsolute: false,
       })
     : outputBase;
 
@@ -84,6 +90,7 @@ export async function replicate(options: ReplicateOptions): Promise<ReplicateRes
     cwd,
     root: outputBase,
     defaultOutput,
+    allowAbsolute: Boolean(options.allowAbsolutePath),
   });
 
   const ctx: SmithContext = {

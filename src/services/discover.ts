@@ -1,4 +1,5 @@
 import {
+  listGlobalTemplates,
   listTemplatesWithSource,
   resolveTemplateDir,
   type ResolvedTemplate,
@@ -14,6 +15,10 @@ export function discoverSmithRoot(cwd: string): string | null {
 
 export function discoverTemplates(cwd: string): TemplateWithSource[] {
   return listTemplatesWithSource(findSmithRoot(cwd));
+}
+
+export function discoverGlobalTemplateNames(): string[] {
+  return listGlobalTemplates();
 }
 
 export function discoverTemplateDir(cwd: string, template: string): ResolvedTemplate {

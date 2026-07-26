@@ -7,7 +7,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { ReplicationAbortedError, UnsafePathError } from './errors';
+import { ReplicationAbortedError, UnsafePathError, ValidationError } from './errors';
 import { filterFilesByPreset } from './filterFiles';
 import { isInsideResolved } from './pathSafety';
 import { substitute } from './substitute';
@@ -41,6 +41,16 @@ function walkTemplate(dir: string, base = dir): TreeEntry[] {
 /** Reject any symlink in the template tree before loading config.js or running hooks. */
 export function assertTemplateTreeSafe(templateDir: string): void {
   walkTemplate(templateDir);
+}
+
+function readUtf8TemplateFile(srcPath: string, relPath: string): string {
+  const buf = readFileSync(srcPath);
+  if (buf.includes(0)) {
+    throw new ValidationError(
+      `Binary template files are not supported (UTF-8 text only): ${relPath}`,
+    );
+  }
+  return buf.toString('utf8');
 }
 
 export async function replicateTree(options: {
@@ -88,8 +98,10 @@ export async function replicateTree(options: {
     }
     mkdirSync(dirname(dest), { recursive: true });
 
+    const sourceText = readUtf8TemplateFile(srcPath, relPath);
+
     if (existsSync(dest)) {
-      const incoming = substitute(readFileSync(srcPath, 'utf8'), vars, delimiters);
+      const incoming = substitute(sourceText, vars, delimiters);
       const existing = readFileSync(dest, 'utf8');
       const resolution = await resolveConflict(policy, { target: dest, existing, incoming });
       if (resolution.action === 'abort') throw new ReplicationAbortedError();
@@ -109,8 +121,7 @@ export async function replicateTree(options: {
       continue;
     }
 
-    const content = readFileSync(srcPath, 'utf8');
-    writeFileSync(dest, substitute(content, vars, delimiters), 'utf8');
+    writeFileSync(dest, substitute(sourceText, vars, delimiters), 'utf8');
     onWrite?.(dest, null);
     written.push(dest);
   }

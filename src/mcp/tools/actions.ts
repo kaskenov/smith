@@ -35,7 +35,7 @@ export function registerActionTools(server: McpServer): void {
     'smith_replicate',
     {
       description:
-        'Generate files from a local or global smith template. Required: name, template. Optional: path (relative only), preset, force, skip. When neither force nor skip is set, force defaults to true (MCP is non-interactive). Absolute path is rejected. Resolves project templates first, then ~/.smith/templates. Config merge: global → project → template.',
+        'Generate files from a local or global smith template. Required: name, template. Optional: path (relative only — absolute path and absolute rootDir are rejected), preset, force, skip. When neither force nor skip is set, force defaults to true (MCP is non-interactive). Resolves project templates first, then ~/.smith/templates. Config merge: global → project → template. Template config.js/hooks execute in the MCP host.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string(),

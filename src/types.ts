@@ -122,6 +122,11 @@ export interface ReplicateOptions {
   preset?: string;
   /** Working directory for project discovery; defaults to process.cwd() */
   cwd?: string;
+  /**
+   * Allow absolute --path (CLI: --allow-absolute). Default false.
+   * Absolute rootDir in config is never allowed.
+   */
+  allowAbsolutePath?: boolean;
   /** Conflict handler; defaults to non-interactive policy (force/skip only) */
   conflictResolver?: ConflictResolver;
 }
