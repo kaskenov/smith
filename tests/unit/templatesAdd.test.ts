@@ -1,13 +1,39 @@
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runTemplatesAdd } from '../../src/commands/templates/add';
-import { getGlobalConfigPath, getGlobalTemplatesDir, readSources } from '../../src/core/globalTemplates';
+import { readSources } from '../../src/core/templateSources';
+import { getGlobalConfigPath, getGlobalTemplatesDir } from '../../src/paths/globalSmithHome';
+
+jest.mock('node:child_process', () => ({
+  spawnSync: jest.fn(),
+}));
 
 describe('runTemplatesAdd', () => {
+  const spawnSyncMock = spawnSync as jest.MockedFunction<typeof spawnSync>;
+
   afterEach(() => {
     jest.restoreAllMocks();
+    spawnSyncMock.mockReset();
   });
+
+  function mockSuccessfulClone(fileName: string, content: string): void {
+    spawnSyncMock.mockImplementation((_cmd, args) => {
+      const list = args as string[];
+      const dest = list[list.length - 1]!;
+      mkdirSync(dest, { recursive: true });
+      writeFileSync(join(dest, fileName), content, 'utf8');
+      return {
+        status: 0,
+        stdout: '',
+        stderr: '',
+        pid: 1,
+        output: [],
+        signal: null,
+      } as ReturnType<typeof spawnSync>;
+    });
+  }
 
   it('copies a local path into ~/.smith/templates and writes sources', async () => {
     const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
@@ -35,6 +61,17 @@ describe('runTemplatesAdd', () => {
     rmSync(source, { recursive: true, force: true });
   });
 
+  it('copies without subdirectory path', async () => {
+    const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
+    writeFileSync(join(source, 'a.txt'), 'a', 'utf8');
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await runTemplatesAdd({ name: 'plain', from: source });
+
+    expect(existsSync(join(getGlobalTemplatesDir(), 'plain', 'a.txt'))).toBe(true);
+    rmSync(source, { recursive: true, force: true });
+  });
+
   it('refuses overwrite without --force', async () => {
     const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
     writeFileSync(join(source, 'a.txt'), 'a', 'utf8');
@@ -46,5 +83,157 @@ describe('runTemplatesAdd', () => {
     );
 
     rmSync(source, { recursive: true, force: true });
+  });
+
+  it('overwrites with --force', async () => {
+    const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
+    writeFileSync(join(source, 'a.txt'), 'v1', 'utf8');
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await runTemplatesAdd({ name: 'forced', from: source });
+    writeFileSync(join(source, 'a.txt'), 'v2', 'utf8');
+    await runTemplatesAdd({ name: 'forced', from: source, force: true });
+
+    expect(readFileSync(join(getGlobalTemplatesDir(), 'forced', 'a.txt'), 'utf8')).toBe('v2');
+    rmSync(source, { recursive: true, force: true });
+  });
+
+  it('throws when --from is empty', async () => {
+    await expect(runTemplatesAdd({ name: 'x', from: '' })).rejects.toThrow(
+      'Missing required flag: --from',
+    );
+  });
+
+  it('throws for invalid template name', async () => {
+    await expect(runTemplatesAdd({ name: '../evil', from: '/tmp' })).rejects.toThrow(
+      'Invalid template name',
+    );
+  });
+
+  it('throws when source subdirectory is missing', async () => {
+    const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
+    await expect(
+      runTemplatesAdd({ name: 'bad-sub', from: source, path: 'missing' }),
+    ).rejects.toThrow('Source subdirectory not found: missing');
+    rmSync(source, { recursive: true, force: true });
+  });
+
+  it('throws when cloned source directory disappears', async () => {
+    spawnSyncMock.mockImplementation((_cmd, args) => {
+      const list = args as string[];
+      const dest = list[list.length - 1]!;
+      rmSync(dest, { recursive: true, force: true });
+      return {
+        status: 0,
+        stdout: '',
+        stderr: '',
+        pid: 1,
+        output: [],
+        signal: null,
+      } as ReturnType<typeof spawnSync>;
+    });
+
+    await expect(
+      runTemplatesAdd({ name: 'gone-clone', from: 'git@github.com:org/repo.git' }),
+    ).rejects.toThrow('Source path not found or not a directory');
+  });
+
+  it('throws for unknown --from source', async () => {
+    await expect(
+      runTemplatesAdd({ name: 'x', from: 'not-a-path-or-git' }),
+    ).rejects.toThrow('Unknown --from source');
+  });
+
+  it('clones git sources with ref and cleans temp dir', async () => {
+    mockSuccessfulClone('t.txt', 'from-git');
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await runTemplatesAdd({
+      name: 'from-git',
+      from: 'git@github.com:org/repo.git',
+      ref: 'main',
+    });
+
+    expect(spawnSyncMock).toHaveBeenCalled();
+    const args = spawnSyncMock.mock.calls[0]?.[1] as string[];
+    expect(args).toContain('--branch');
+    expect(args).toContain('main');
+    expect(readFileSync(join(getGlobalTemplatesDir(), 'from-git', 't.txt'), 'utf8')).toBe(
+      'from-git',
+    );
+    expect(readSources()['from-git']).toMatchObject({
+      type: 'git',
+      from: 'git@github.com:org/repo.git',
+      ref: 'main',
+    });
+  });
+
+  it('supports https github ssh and http git source detection', async () => {
+    mockSuccessfulClone('x.txt', 'ok');
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await runTemplatesAdd({ name: 'https-tpl', from: 'https://github.com/org/repo.git' });
+    await runTemplatesAdd({ name: 'gh-tpl', from: 'github:org/repo' });
+    await runTemplatesAdd({ name: 'ssh-tpl', from: 'ssh://git@host/repo.git' });
+    await runTemplatesAdd({ name: 'http-tpl', from: 'http://example.com/repo.git' });
+
+    expect(existsSync(join(getGlobalTemplatesDir(), 'https-tpl', 'x.txt'))).toBe(true);
+    expect(existsSync(join(getGlobalTemplatesDir(), 'gh-tpl', 'x.txt'))).toBe(true);
+    expect(existsSync(join(getGlobalTemplatesDir(), 'ssh-tpl', 'x.txt'))).toBe(true);
+    expect(existsSync(join(getGlobalTemplatesDir(), 'http-tpl', 'x.txt'))).toBe(true);
+  });
+
+  it('throws when git clone fails', async () => {
+    spawnSyncMock.mockReturnValue({
+      status: 1,
+      stdout: '',
+      stderr: 'clone exploded',
+      pid: 1,
+      output: [],
+      signal: null,
+    } as ReturnType<typeof spawnSync>);
+
+    await expect(
+      runTemplatesAdd({ name: 'bad-git', from: 'git@github.com:org/repo.git' }),
+    ).rejects.toThrow('Failed to clone template source: clone exploded');
+  });
+
+  it('uses fallback message when git clone fails without stderr', async () => {
+    spawnSyncMock.mockReturnValue({
+      status: 128,
+      stdout: '',
+      stderr: '',
+      pid: 1,
+      output: [],
+      signal: null,
+    } as ReturnType<typeof spawnSync>);
+
+    await expect(
+      runTemplatesAdd({ name: 'bad-git-2', from: 'git@github.com:org/repo.git' }),
+    ).rejects.toThrow('Failed to clone template source: git clone failed');
+  });
+
+  it('throws when git clone path subdirectory is missing', async () => {
+    spawnSyncMock.mockImplementation((_cmd, args) => {
+      const list = args as string[];
+      const dest = list[list.length - 1]!;
+      mkdirSync(dest, { recursive: true });
+      return {
+        status: 0,
+        stdout: '',
+        stderr: '',
+        pid: 1,
+        output: [],
+        signal: null,
+      } as ReturnType<typeof spawnSync>;
+    });
+
+    await expect(
+      runTemplatesAdd({
+        name: 'git-sub',
+        from: 'git@github.com:org/repo.git',
+        path: 'nope',
+      }),
+    ).rejects.toThrow('Source subdirectory not found: nope');
   });
 });

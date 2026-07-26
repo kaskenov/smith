@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runReplicate } from '../../src/commands/replicate';
-import { getGlobalConfigPath, getGlobalTemplatesDir } from '../../src/core/globalTemplates';
+import { getGlobalConfigPath, getGlobalTemplatesDir } from '../../src/paths/globalSmithHome';
 import * as brandModule from '../../src/terminal/brand';
 
 describe('global-only replicate', () => {

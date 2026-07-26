@@ -84,7 +84,7 @@ describe('runUpdate', () => {
 
     await expect(runUpdate()).resolves.toBeUndefined();
 
-    expect(errorSpy).toHaveBeenCalledWith('Failed to update:', expect.any(Error));
+    expect(errorSpy).toHaveBeenCalledWith('Failed to update: network down');
     expect(process.exitCode).toBe(1);
   });
 });

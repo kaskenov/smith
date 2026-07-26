@@ -1,3 +1,4 @@
+import { NotFoundError, ValidationError } from '../core/errors';
 import type { PresetConfig } from '../types';
 
 export interface PresetSelection {
@@ -22,7 +23,7 @@ export function resolvePresetSelection(options: {
   if (preset !== undefined) {
     if (!presets || !(preset in presets)) {
       const available = presets ? formatPresetList(presets) : '(none)';
-      throw new Error(`Preset not found: ${preset}. Available presets: ${available}`);
+      throw new NotFoundError(`Preset not found: ${preset}. Available presets: ${available}`);
     }
 
     const selected = presets[preset];
@@ -35,7 +36,7 @@ export function resolvePresetSelection(options: {
 
   if (defaultPreset !== undefined) {
     if (!presets || !(defaultPreset in presets)) {
-      throw new Error(`defaultPreset "${defaultPreset}" is not defined in presets`);
+      throw new ValidationError(`defaultPreset "${defaultPreset}" is not defined in presets`);
     }
 
     const selected = presets[defaultPreset];

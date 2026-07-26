@@ -1,4 +1,7 @@
 import { parseAgentFlags } from '../agentFlags';
+import { isHelpFlag, reportCliError } from '../cliFlags';
+import { UsageError } from '../../core/errors';
+import { runInstallList } from '../install/list';
 import {
   printUninstallHelp,
   printUninstallMcpHelp,
@@ -6,13 +9,9 @@ import {
 } from './help';
 import { runUninstallMcp, runUninstallSkills } from './run';
 
-function isHelpFlag(arg: string): boolean {
-  return arg === '-h' || arg === '--help';
-}
-
 async function routeUninstall(argv: string[]): Promise<void> {
   if (argv[0] !== 'uninstall') {
-    throw new Error('Expected uninstall command');
+    throw new UsageError('Expected uninstall command');
   }
 
   const rest = argv.slice(1);
@@ -33,6 +32,9 @@ async function routeUninstall(argv: string[]): Promise<void> {
       case 'skills':
         printUninstallSkillsHelp();
         return;
+      case 'list':
+        printUninstallHelp();
+        return;
       default:
         printUninstallHelp();
         return;
@@ -46,8 +48,12 @@ async function routeUninstall(argv: string[]): Promise<void> {
     case 'skills':
       await runUninstallSkills(parseAgentFlags(afterSubcommand));
       return;
+    case 'list':
+      // Same status reporter as `smith install list`.
+      await runInstallList(parseAgentFlags(afterSubcommand));
+      return;
     default:
-      throw new Error(`Unknown uninstall subcommand: ${subcommand}`);
+      throw new UsageError(`Unknown uninstall subcommand: ${subcommand}`);
   }
 }
 
@@ -55,8 +61,6 @@ export async function runUninstall(argv: string[]): Promise<void> {
   try {
     await routeUninstall(argv);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
-    process.exitCode = 1;
+    reportCliError(error);
   }
 }

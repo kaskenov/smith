@@ -20,7 +20,34 @@
     "access": "public"
   },
   "type": "commonjs",
-  "main": "dist/cli.js",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "default": "./dist/cli.js"
+    },
+    "./config": {
+      "types": "./dist/config/createSmithConfig.d.ts",
+      "default": "./dist/config/createSmithConfig.js"
+    },
+    "./config/createSmithConfig": {
+      "types": "./dist/config/createSmithConfig.d.ts",
+      "default": "./dist/config/createSmithConfig.js"
+    },
+    "./replicate": {
+      "types": "./dist/services/replicate.d.ts",
+      "default": "./dist/services/replicate.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "smith": "bin/smith.js"
   },
@@ -46,7 +73,6 @@
   "dependencies": {
     "@inquirer/prompts": "7.3.2",
     "@modelcontextprotocol/sdk": "1.29.0",
-    "cac": "6.7.14",
     "figlet": "1.8.0",
     "picomatch": "4.0.4",
     "pluralize": "8.0.0",

@@ -1,32 +1,13 @@
-import { resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { runTemplatesAdd } from '../../commands/templates/add';
-import { runTemplatesInitConfig } from '../../commands/templates/initConfig';
-import { runTemplatesRemove } from '../../commands/templates/remove';
-import { runTemplatesUpdate } from '../../commands/templates/update';
-import { getGlobalSmithDir, listTemplatesWithSource } from '../../core/globalTemplates';
+import { getGlobalSmithDir } from '../../paths/globalSmithHome';
+import { listTemplatesWithSource } from '../../core/resolveTemplate';
 import { findSmithRoot } from '../../core/resolveRoot';
-
-function jsonResult(payload: unknown) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
-  };
-}
-
-function normalizeCwd(cwd?: string): string {
-  return resolve(cwd ?? process.cwd());
-}
-
-async function withCwd<T>(cwd: string, fn: () => Promise<T>): Promise<T> {
-  const previous = process.cwd();
-  process.chdir(cwd);
-  try {
-    return await fn();
-  } finally {
-    process.chdir(previous);
-  }
-}
+import { addTemplate } from '../../services/templates/add';
+import { initTemplatesConfig } from '../../services/templates/initConfig';
+import { removeTemplate } from '../../services/templates/remove';
+import { updateTemplates } from '../../services/templates/update';
+import { jsonResult, normalizeCwd } from './helpers';
 
 export function registerTemplateTools(server: McpServer): void {
   server.registerTool(
@@ -44,8 +25,14 @@ export function registerTemplateTools(server: McpServer): void {
       },
     },
     async ({ cwd, name, from, path, ref, force }) => {
-      await withCwd(normalizeCwd(cwd), async () => {
-        await runTemplatesAdd({ name, from, path, ref, force });
+      const runCwd = normalizeCwd(cwd);
+      const result = await addTemplate({
+        cwd: runCwd,
+        name,
+        from,
+        path,
+        ref,
+        force,
       });
       return jsonResult({
         ok: true,
@@ -54,6 +41,7 @@ export function registerTemplateTools(server: McpServer): void {
         path: path ?? null,
         ref: ref ?? null,
         force: force ?? false,
+        targetDir: result.targetDir,
         globalSmithDir: getGlobalSmithDir(),
       });
     },
@@ -64,14 +52,11 @@ export function registerTemplateTools(server: McpServer): void {
     {
       description: 'Remove a global template from ~/.smith/templates and its sources.json entry.',
       inputSchema: {
-        cwd: z.string().optional(),
         name: z.string(),
       },
     },
-    async ({ cwd, name }) => {
-      await withCwd(normalizeCwd(cwd), async () => {
-        await runTemplatesRemove(name);
-      });
+    async ({ name }) => {
+      await removeTemplate(name);
       return jsonResult({ ok: true, name, globalSmithDir: getGlobalSmithDir() });
     },
   );
@@ -88,9 +73,7 @@ export function registerTemplateTools(server: McpServer): void {
     },
     async ({ cwd, name }) => {
       const runCwd = normalizeCwd(cwd);
-      await withCwd(runCwd, async () => {
-        await runTemplatesUpdate(name);
-      });
+      await updateTemplates({ name, cwd: runCwd });
       return jsonResult({
         ok: true,
         name: name ?? null,
@@ -105,12 +88,10 @@ export function registerTemplateTools(server: McpServer): void {
     {
       description:
         'Write ~/.smith/config.js starter with shared name variables (NAME_PASCAL, NAME_KEBAB, ...) if missing.',
-      inputSchema: {
-        cwd: z.string().optional(),
-      },
+      inputSchema: {},
     },
-    async ({ cwd }) => {
-      const result = await withCwd(normalizeCwd(cwd), async () => runTemplatesInitConfig());
+    async () => {
+      const result = await initTemplatesConfig();
       return jsonResult({
         ok: true,
         path: result.path,

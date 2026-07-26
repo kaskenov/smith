@@ -1,23 +1,15 @@
-import { resolveAgents } from '../../install/agents';
-import { copyBundledSkills } from '../../install/copySkills';
-import { getSkillsDir, resolveScope } from '../../install/paths';
+import { installSkills } from '../../install/installSkills';
 import type { InstallFlags } from '../../install/types';
 import { brandSmith } from '../../terminal/brand';
 
 export async function runInstallSkills(flags: InstallFlags): Promise<void> {
-  const cwd = flags.cwd ?? process.cwd();
-  const scope = resolveScope(flags);
-  const agents = resolveAgents(flags);
+  const actions = await installSkills(flags);
 
-  for (const agent of agents) {
-    const skillsDir = getSkillsDir(agent, scope, cwd);
-
-    if (flags.dryRun) {
-      console.log(`Would install skills to ${skillsDir}`);
-      continue;
+  for (const action of actions) {
+    if (action.type === 'dry-run') {
+      console.log(`Would install skills to ${action.path}`);
+    } else {
+      console.log(brandSmith(`smith installed skills to ${action.path}`));
     }
-
-    copyBundledSkills({ targetRoot: skillsDir, force: flags.force });
-    console.log(brandSmith(`smith installed skills to ${skillsDir}`));
   }
 }

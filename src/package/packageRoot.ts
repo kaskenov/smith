@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { InternalError } from '../core/errors';
 
 export function findSmithPackageRoot(startDir: string): string {
   let current = startDir;
@@ -11,5 +12,5 @@ export function findSmithPackageRoot(startDir: string): string {
     if (parent === current) break;
     current = parent;
   }
-  throw new Error('smith package root not found');
+  throw new InternalError('smith package root not found');
 }

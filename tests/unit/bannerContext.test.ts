@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { getGlobalTemplatesDir } from '../../src/core/globalTemplates';
+import { getGlobalTemplatesDir } from '../../src/paths/globalSmithHome';
 import { resolveProjectContext, resolveSmithBannerContext } from '../../src/terminal/bannerContext';
 import * as registryModule from '../../src/package/registry';
 

@@ -1,29 +1,24 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import {
-  getGlobalSmithDir,
-  listTemplatesWithSource,
-  resolveTemplateDir,
-} from '../../core/globalTemplates';
+import { NotFoundError, UnsafePathError } from '../../core/errors';
+import { assertNotSymlink, assertSafeFileInside, isRealDirectory, isRealFile } from '../../core/fsGuard';
+import { getGlobalSmithDir } from '../../paths/globalSmithHome';
+import { listTemplatesWithSource, resolveTemplateDir } from '../../core/resolveTemplate';
 import { findSmithRoot } from '../../core/resolveRoot';
 import { requireSmithRoot, resolveSmithPath } from '../context';
+import { jsonResult, normalizeCwd } from './helpers';
 
 interface TemplateTreeNode {
   name: string;
   type: 'file' | 'directory';
   children?: TemplateTreeNode[];
-}
-
-function jsonResult(payload: unknown) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
-  };
-}
-
-function normalizeCwd(cwd?: string): string {
-  return resolve(cwd ?? process.cwd());
 }
 
 function listTemplateFiles(templateDir: string, prefix = ''): string[] {
@@ -32,23 +27,30 @@ function listTemplateFiles(templateDir: string, prefix = ''): string[] {
     .flatMap((entry) => {
       const relPath = prefix ? `${prefix}/${entry}` : entry;
       const fullPath = join(templateDir, entry);
-      if (statSync(fullPath).isDirectory()) {
+      if (lstatSync(fullPath).isSymbolicLink()) {
+        throw new UnsafePathError(`Template contains symlink (not allowed): ${relPath}`);
+      }
+      if (isRealDirectory(fullPath)) {
         return listTemplateFiles(fullPath, relPath);
       }
       return [relPath];
     });
 }
 
-function readTemplateTree(templateDir: string): TemplateTreeNode[] {
+function readTemplateTree(templateDir: string, prefix = ''): TemplateTreeNode[] {
   return readdirSync(templateDir)
     .sort()
     .map((entry) => {
+      const relPath = prefix ? `${prefix}/${entry}` : entry;
       const fullPath = join(templateDir, entry);
-      if (statSync(fullPath).isDirectory()) {
+      if (lstatSync(fullPath).isSymbolicLink()) {
+        throw new UnsafePathError(`Template contains symlink (not allowed): ${relPath}`);
+      }
+      if (isRealDirectory(fullPath)) {
         return {
           name: entry,
           type: 'directory' as const,
-          children: readTemplateTree(fullPath),
+          children: readTemplateTree(fullPath, relPath),
         };
       }
       return {
@@ -104,13 +106,14 @@ export function registerReadTools(server: McpServer): void {
 
       const { templateDir, source } = resolveTemplateDir(root, template);
 
+      const tree = includeTree ? readTemplateTree(templateDir) : undefined;
       return jsonResult({
         root,
         globalSmithDir: getGlobalSmithDir(),
         template,
         source,
         files: listTemplateFiles(templateDir),
-        tree: includeTree ? readTemplateTree(templateDir) : undefined,
+        tree,
       });
     },
   );
@@ -119,7 +122,7 @@ export function registerReadTools(server: McpServer): void {
     'smith_read_file',
     {
       description:
-        'Read a file relative to project .smith/ (e.g. config.js, templates/component/{{name}}.txt). Path must stay inside .smith/.',
+        'Read a file relative to project .smith/ (e.g. config.js, templates/component/{{name}}.txt). Path must stay inside .smith/; symlinks are rejected.',
       inputSchema: {
         cwd: z.string().optional(),
         path: z.string(),
@@ -127,10 +130,17 @@ export function registerReadTools(server: McpServer): void {
     },
     async ({ cwd, path }) => {
       const root = requireSmithRoot(normalizeCwd(cwd));
+      const smithDir = resolve(root, '.smith');
       const filePath = resolveSmithPath(root, path);
-      if (!existsSync(filePath) || !statSync(filePath).isFile()) {
-        throw new Error(`File not found: ${path}`);
+
+      if (!existsSync(filePath)) {
+        throw new NotFoundError(`File not found: ${path}`);
       }
+      assertNotSymlink(filePath, 'File');
+      if (!isRealFile(filePath)) {
+        throw new NotFoundError(`File not found: ${path}`);
+      }
+      assertSafeFileInside(smithDir, filePath, 'File');
 
       return jsonResult({
         root,

@@ -1,4 +1,4 @@
-import { listTemplatesWithSource } from '../../core/globalTemplates';
+import { listTemplatesWithSource } from '../../core/resolveTemplate';
 import { findSmithRoot } from '../../core/resolveRoot';
 
 export function runTemplatesList(): void {

@@ -33,6 +33,7 @@ export async function printGlobalHelp(): Promise<void> {
   console.log('  smith [command] [flags]');
   console.log('');
   console.log('Commands:');
+  console.log('  init           Bootstrap .smith/ in the current project');
   console.log('  replicate, r   Create files from a template');
   console.log('  list           List local and global templates');
   console.log('  templates, t   Manage global templates (~/.smith)');
