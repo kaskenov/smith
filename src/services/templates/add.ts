@@ -23,6 +23,8 @@ export interface TemplatesAddOptions {
   ref?: string;
   force?: boolean;
   cwd?: string;
+  /** Required — installed templates may execute config.js/hooks on replicate/validate. */
+  acknowledgeExecutableConfig?: boolean;
 }
 
 export interface TemplatesAddResult {
@@ -46,6 +48,32 @@ function assertSecureGitSource(from: string): void {
     throw new UsageError(
       'Insecure git transports (http://, git://) are not allowed. Use https://, ssh://, git@, or github:.',
     );
+  }
+}
+
+/** Reject host/user path segments that start with `-` (older git option-injection class). */
+function assertSafeGitSourceShape(from: string): void {
+  const candidates: string[] = [];
+  if (from.startsWith('git@')) {
+    const host = from.slice('git@'.length).split(/[:/]/)[0];
+    if (host) candidates.push(host);
+  } else if (from.startsWith('github:')) {
+    const rest = from.slice('github:'.length);
+    candidates.push(...rest.split('/').filter(Boolean));
+  } else {
+    try {
+      const url = new URL(from);
+      if (url.hostname) candidates.push(url.hostname);
+      if (url.username) candidates.push(url.username);
+      candidates.push(...url.pathname.split('/').filter(Boolean));
+    } catch {
+      // Non-URL allowlisted forms are handled by prefix checks elsewhere.
+    }
+  }
+  for (const part of candidates) {
+    if (part.startsWith('-')) {
+      throw new UsageError(`Unsafe git source component starting with '-': ${part}`);
+    }
   }
 }
 
@@ -116,16 +144,26 @@ function installTemplateDir(name: string, sourceDir: string, force: boolean): st
     rmSync(targetDir, { recursive: true, force: true });
   }
   cpSync(sourceDir, targetDir, { recursive: true });
+  // Defense in depth after copy (source could change between assert and cp on shared FS).
+  assertTemplateTreeSafe(targetDir);
   return targetDir;
 }
 
 export async function addTemplate(options: TemplatesAddOptions): Promise<TemplatesAddResult> {
+  if (options.acknowledgeExecutableConfig !== true) {
+    throw new UsageError(
+      'templates add requires acknowledgeExecutableConfig:true — installed templates may execute config.js/hooks on replicate/validate.',
+    );
+  }
   assertValidTemplateName(options.name);
   if (!options.from) {
     throw new UsageError('Missing required flag: --from');
   }
 
   assertSecureGitSource(options.from);
+  if (isAllowedGitSource(options.from)) {
+    assertSafeGitSourceShape(options.from);
+  }
 
   ensureGlobalConfig();
 

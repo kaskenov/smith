@@ -12,8 +12,12 @@ export function substitute(
   const [open, close] = delimiters;
   let result = text;
   for (const [key, value] of Object.entries(vars)) {
-    const pattern = new RegExp(`${escapeRegExp(open)}${escapeRegExp(key)}${escapeRegExp(close)}`, 'g');
-    result = result.replace(pattern, value);
+    const pattern = new RegExp(
+      `${escapeRegExp(open)}${escapeRegExp(key)}${escapeRegExp(close)}`,
+      'g',
+    );
+    // Function replacer so `$&` / `$$` in values are literal, not replace patterns.
+    result = result.replace(pattern, () => value);
   }
   return result;
 }

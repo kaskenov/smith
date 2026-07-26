@@ -38,7 +38,7 @@ export function printGlobalDocs(): void {
     '',
     '--name      Source value for template variables (required)',
     '--template  Local or global template name (required)',
-    '--path      Output root directory (relative by default; use --allow-absolute for absolute)',
+    '--path      Output root directory (relative by default; no `..`; use --allow-absolute for absolute/`..`)',
     '--preset    Preset name from template config',
     '--force     Overwrite existing files',
     '--skip      Keep existing files',
@@ -142,18 +142,22 @@ export function printTemplatesDocs(): void {
     'Global config.js provides shared variables such as NAME_PASCAL and NAME_KEBAB.',
   ]);
   printDocSection('Add', [
-    'smith templates add <name> --from <path|git> [--path <sub>] [--ref <ref>] [--force]',
+    'smith templates add <name> --from <path|git> [--path <sub>] [--ref <ref>] [--force] [--acknowledge-executable-config]',
     '',
     '--from path   Copy an existing directory (including npm package folders)',
     '--from git    Shallow-clone a git URL, then copy the template folder',
     '--path        Subdirectory inside the source that is the template',
     '--ref         Git branch or tag',
     '--force       Overwrite an existing global template',
+    '--acknowledge-executable-config  Required for add/update (templates may run config.js/hooks)',
+    '',
+    'Templates may include config.js/hooks that execute on replicate/validate.',
+    'MCP and CLI both require explicit acknowledgement for add/update.',
   ]);
   printDocSection('Other subcommands', [
     'list          Local + global templates with source markers',
-    'remove        Delete a global template and its sources.json entry',
-    'update        Re-fetch from recorded sources (one name or all)',
+    'remove        Delete a global template (requires --confirm)',
+    'update        Re-fetch from recorded sources (requires --acknowledge-executable-config)',
     'init-config   Write ~/.smith/config.js starter if missing',
   ]);
 }

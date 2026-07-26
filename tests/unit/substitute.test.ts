@@ -15,4 +15,9 @@ describe('substitute', () => {
   it('leaves unknown placeholders intact', () => {
     expect(substitute('{{UNKNOWN}}', vars, delimiters)).toBe('{{UNKNOWN}}');
   });
+
+  it('treats $ patterns in values as literals', () => {
+    expect(substitute('x{{NAME}}y', { NAME: '$&' }, delimiters)).toBe('x$&y');
+    expect(substitute('x{{NAME}}y', { NAME: '$$' }, delimiters)).toBe('x$$y');
+  });
 });

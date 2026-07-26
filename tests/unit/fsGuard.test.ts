@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { UnsafePathError } from '../../src/core/errors';
 import {
   assertNotSymlink,
+  assertRegularFile,
   assertSafeFileInside,
   isRealDirectory,
   isRealFile,
@@ -40,6 +41,7 @@ describe('fsGuard', () => {
     const dir = join(root, 'dir');
     mkdirSync(dir);
     expect(() => assertSafeFileInside(root, dir)).toThrow(/not a regular file/);
+    expect(() => assertRegularFile(dir)).toThrow(/not a regular file/);
   });
 
   it('rejects when resolved path escapes the root', () => {

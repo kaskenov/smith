@@ -1,11 +1,13 @@
 import { listGlobalTemplates } from '../../core/resolveTemplate';
-import { NotFoundError } from '../../core/errors';
+import { NotFoundError, UsageError } from '../../core/errors';
 import { readSources } from '../../core/templateSources';
 import { addTemplate } from './add';
 
 export interface TemplatesUpdateOptions {
   name?: string;
   cwd?: string;
+  /** Required — updated templates may execute config.js/hooks on replicate/validate. */
+  acknowledgeExecutableConfig?: boolean;
 }
 
 export interface TemplatesUpdateResult {
@@ -13,9 +15,19 @@ export interface TemplatesUpdateResult {
   message?: string;
 }
 
+/**
+ * Re-fetch recorded global templates via addTemplate (force).
+ * Re-validates git allowlist, path containment, and symlink-free trees.
+ */
 export async function updateTemplates(
   options: TemplatesUpdateOptions = {},
 ): Promise<TemplatesUpdateResult> {
+  if (options.acknowledgeExecutableConfig !== true) {
+    throw new UsageError(
+      'templates update requires acknowledgeExecutableConfig:true — updated templates may execute config.js/hooks on replicate/validate.',
+    );
+  }
+
   const { name, cwd } = options;
 
   const sources = readSources();
@@ -46,6 +58,7 @@ export async function updateTemplates(
       ref: source.ref,
       force: true,
       cwd,
+      acknowledgeExecutableConfig: true,
     });
   }
 

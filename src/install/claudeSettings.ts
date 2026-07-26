@@ -10,9 +10,9 @@ export function mergeClaudeMcpEnablement(
     enabledMcpjsonServers.push(serverKey);
   }
 
+  // Allowlist-only: do not set enableAllProjectMcpServers (widens trust beyond smith).
   return {
     ...existing,
-    enableAllProjectMcpServers: true,
     enabledMcpjsonServers,
   };
 }
@@ -29,8 +29,19 @@ export function removeClaudeMcpEnablement(
     (key) => key !== serverKey,
   );
 
-  return {
+  const next: Record<string, unknown> = {
     ...existing,
     enabledMcpjsonServers,
   };
+
+  // If smith was the only allowlisted server and enable-all was on, clear the
+  // broad flag so uninstall does not leave every project MCP enabled.
+  if (
+    existing.enableAllProjectMcpServers === true &&
+    enabledMcpjsonServers.length === 0
+  ) {
+    delete next.enableAllProjectMcpServers;
+  }
+
+  return next;
 }

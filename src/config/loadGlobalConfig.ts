@@ -1,12 +1,10 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { createRequire } from 'node:module';
 import { ensureGlobalSmithDir, getGlobalConfigPath } from '../paths/globalSmithHome';
 import { emptySmithConfig } from './mergeConfig';
+import { loadJsConfig } from './loadJsConfig';
 import { globalConfigStarterContent } from './starterConfig';
 import type { SmithConfig } from '../types';
-
-const requireConfig = createRequire(__filename);
 
 /** Loaded global config. Empty configs are data-only (no hooks). */
 export async function loadGlobalConfig(): Promise<SmithConfig> {
@@ -14,7 +12,7 @@ export async function loadGlobalConfig(): Promise<SmithConfig> {
   if (!existsSync(file)) {
     return emptySmithConfig();
   }
-  return requireConfig(file) as SmithConfig;
+  return loadJsConfig(file, 'Global config') as SmithConfig;
 }
 
 export function ensureGlobalConfig(): { path: string; created: boolean } {
