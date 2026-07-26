@@ -1,3 +1,7 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { NotFoundError, UnsafePathError } from '../../core/errors';
+import { assertNotSymlink, assertSafeFileInside, isRealDirectory, isRealFile } from '../../core/fsGuard';
 import {
   existsSync,
   lstatSync,
@@ -5,13 +9,8 @@ import {
   readFileSync,
 } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
-import { NotFoundError, UnsafePathError } from '../../core/errors';
-import { assertNotSymlink, assertSafeFileInside, isRealDirectory, isRealFile } from '../../core/fsGuard';
 import { getGlobalSmithDir } from '../../paths/globalSmithHome';
-import { listTemplatesWithSource, resolveTemplateDir } from '../../core/resolveTemplate';
-import { findSmithRoot } from '../../core/resolveRoot';
+import { discoverSmithRoot, discoverTemplateDir, discoverTemplates } from '../../services/discover';
 import { requireSmithRoot, resolveSmithPath } from '../context';
 import { jsonResult, normalizeCwd } from './helpers';
 
@@ -71,8 +70,9 @@ export function registerReadTools(server: McpServer): void {
       },
     },
     async ({ cwd }) => {
-      const root = findSmithRoot(normalizeCwd(cwd));
-      const templates = listTemplatesWithSource(root);
+      const runCwd = normalizeCwd(cwd);
+      const root = discoverSmithRoot(runCwd);
+      const templates = discoverTemplates(runCwd);
       return jsonResult({
         root,
         globalSmithDir: getGlobalSmithDir(),
@@ -93,8 +93,9 @@ export function registerReadTools(server: McpServer): void {
       },
     },
     async ({ cwd, template, includeTree }) => {
-      const root = findSmithRoot(normalizeCwd(cwd));
-      const templates = listTemplatesWithSource(root);
+      const runCwd = normalizeCwd(cwd);
+      const root = discoverSmithRoot(runCwd);
+      const templates = discoverTemplates(runCwd);
 
       if (!template) {
         return jsonResult({
@@ -104,7 +105,7 @@ export function registerReadTools(server: McpServer): void {
         });
       }
 
-      const { templateDir, source } = resolveTemplateDir(root, template);
+      const { templateDir, source } = discoverTemplateDir(runCwd, template);
 
       const tree = includeTree ? readTemplateTree(templateDir) : undefined;
       return jsonResult({

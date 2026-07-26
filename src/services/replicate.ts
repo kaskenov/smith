@@ -7,7 +7,7 @@ import { validatePresets } from '../config/validatePresets';
 import { resolveConflictByPolicy } from '../core/conflicts';
 import { UsageError, ValidationError } from '../core/errors';
 import { resolveTemplateDir } from '../core/resolveTemplate';
-import { replicateTree } from '../core/replicateTree';
+import { assertTemplateTreeSafe, replicateTree } from '../core/replicateTree';
 import { resolveOutputPath } from '../core/resolvePath';
 import { findSmithRoot } from '../core/resolveRoot';
 import { resolveVariables } from '../core/resolveVariables';
@@ -38,6 +38,9 @@ export async function replicate(options: ReplicateOptions): Promise<ReplicateRes
   const cwd = options.cwd ?? process.cwd();
   const discoveredRoot = findSmithRoot(cwd);
   const { templateDir } = resolveTemplateDir(discoveredRoot, options.template);
+
+  // Reject symlink gadgets before require(config.js) or hooks can use them.
+  assertTemplateTreeSafe(templateDir);
 
   const globalConfig = await loadGlobalConfig();
   const projectConfig = await loadRootConfig(discoveredRoot);

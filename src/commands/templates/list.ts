@@ -1,9 +1,7 @@
-import { listTemplatesWithSource } from '../../core/resolveTemplate';
-import { findSmithRoot } from '../../core/resolveRoot';
+import { discoverTemplates } from '../../services/discover';
 
 export function runTemplatesList(): void {
-  const smithRoot = findSmithRoot(process.cwd());
-  const templates = listTemplatesWithSource(smithRoot);
+  const templates = discoverTemplates(process.cwd());
 
   if (templates.length === 0) {
     console.log('No templates in project or ~/.smith/templates/');

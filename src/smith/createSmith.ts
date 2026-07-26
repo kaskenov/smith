@@ -1,6 +1,7 @@
 import { lstatSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { UnsafePathError } from '../core/errors';
+import { assertSafeFileInside } from '../core/fsGuard';
 import { isInside } from '../core/pathSafety';
 import type { SmithContext, SmithHelper } from '../types';
 import { createFormatAPI } from './format';
@@ -34,6 +35,8 @@ export function createSmith(
         if (lstatSync(target).isSymbolicLink()) {
           throw new UnsafePathError(`Template read refuses symlink: ${file}`);
         }
+        // isInsideResolved catches intermediate directory symlinks that escape the tree.
+        assertSafeFileInside(templateDir, target, 'Template file');
         return readFileSync(target, 'utf8');
       },
     },
