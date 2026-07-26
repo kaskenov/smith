@@ -1,33 +1,17 @@
-import cac from 'cac';
-
+import { hasFlag, isHelpFlag, isVersionFlag, readFlag, reportCliError, assertKnownFlags } from './commands/cliFlags';
 import { printGlobalHelp, printListHelp, printReplicateHelp } from './commands/help';
+import { runInit } from './commands/init';
 import { runInstall } from './commands/install/router';
 import { runList } from './commands/list';
 import { runMcpCommand } from './commands/mcp';
 import { runReplicate } from './commands/replicate';
+import { runTemplates } from './commands/templates/router';
 import { runUpdate } from './commands/update';
 import { runUninstall } from './commands/uninstall/router';
 import { runVersion } from './commands/version';
-import { ReplicationAbortedError } from './core/replicateTree';
+import { ReplicationAbortedError } from './core/errors';
 import { notifyIfNewerVersion } from './package/registry';
 import { readPackageVersion } from './package/version';
-
-interface ReplicateCliOptions {
-  name?: string;
-  template?: string;
-  path?: string;
-  force?: boolean;
-  skip?: boolean;
-  preset?: string;
-}
-
-function isHelpFlag(arg: string): boolean {
-  return arg === '-h' || arg === '--help';
-}
-
-function isVersionFlag(arg: string): boolean {
-  return arg === '-v' || arg === '--version';
-}
 
 function shouldSkipVersionCheck(argv: string[]): boolean {
   if (process.env.SMITH_SKIP_UPDATE_CHECK === '1') return true;
@@ -36,6 +20,44 @@ function shouldSkipVersionCheck(argv: string[]): boolean {
   if (command === 'mcp' || command === 'update') return true;
   if (argv.length === 0 || argv.some(isHelpFlag)) return true;
   return false;
+}
+
+async function runReplicateCommand(argv: string[]): Promise<void> {
+  const args = argv.slice(1);
+  try {
+    assertKnownFlags(args, {
+      valueFlags: ['--name', '--template', '--path', '--preset'],
+      boolFlags: ['--force', '--skip', '--allow-absolute'],
+    });
+  } catch (error) {
+    reportCliError(error);
+    return;
+  }
+
+  const name = readFlag(args, '--name');
+  const template = readFlag(args, '--template');
+  const path = readFlag(args, '--path');
+  const preset = readFlag(args, '--preset');
+  const force = hasFlag(args, '--force');
+  const skip = hasFlag(args, '--skip');
+  const allowAbsolutePath = hasFlag(args, '--allow-absolute');
+
+  if (!name || !template) {
+    console.error('Missing required flags: --name and --template');
+    printReplicateHelp();
+    process.exitCode = 1;
+    return;
+  }
+
+  try {
+    await runReplicate({ name, template, path, force, skip, preset, allowAbsolutePath });
+  } catch (error) {
+    if (error instanceof ReplicationAbortedError) {
+      process.exitCode = 0;
+      return;
+    }
+    reportCliError(error);
+  }
 }
 
 export async function run(argv = process.argv.slice(2)): Promise<void> {
@@ -48,6 +70,22 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
 
   if (argv.some(isVersionFlag)) {
     await runVersion();
+    return;
+  }
+
+  if (command === 'init') {
+    if (argv.some(isHelpFlag)) {
+      console.log('Usage: smith init');
+      console.log('');
+      console.log('Bootstrap .smith/config.js (NAME_* variables) and .smith/templates/.');
+      return;
+    }
+    try {
+      assertKnownFlags(argv.slice(1), { valueFlags: [], boolFlags: [] });
+      await runInit();
+    } catch (error) {
+      reportCliError(error);
+    }
     return;
   }
 
@@ -77,16 +115,28 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       return;
     }
     try {
+      assertKnownFlags(argv.slice(1), { valueFlags: [], boolFlags: [] });
       runList();
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(message);
-      process.exitCode = 1;
+      reportCliError(error);
     }
     return;
   }
 
-  if (argv.length === 0 || (argv.some(isHelpFlag) && command !== 'install' && command !== 'uninstall')) {
+  if (command === 'templates' || command === 't') {
+    await runTemplates(argv);
+    return;
+  }
+
+  if (
+    argv.length === 0 ||
+    (argv.some(isHelpFlag) &&
+      command !== 'install' &&
+      command !== 'uninstall' &&
+      command !== 'templates' &&
+      command !== 't' &&
+      command !== 'init')
+  ) {
     if (askingReplicateHelp) {
       printReplicateHelp();
       return;
@@ -95,46 +145,14 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
-  const cli = cac('smith');
+  if (command === 'replicate' || command === 'r') {
+    await runReplicateCommand(argv);
+    return;
+  }
 
-  cli
-    .command('replicate', 'Create a component from template')
-    .alias('r')
-    .option('--name <name>', 'Component name')
-    .option('--template <template>', 'Template folder name')
-    .option('--path <path>', 'Output root directory')
-    .option('--force', 'Overwrite existing files')
-    .option('--skip', 'Skip existing files')
-    .option('--preset <preset>', 'Preset name from template config')
-    .action(async (opts: ReplicateCliOptions) => {
-      if (!opts.name || !opts.template) {
-        console.error('Missing required flags: --name and --template');
-        printReplicateHelp();
-        process.exitCode = 1;
-        return;
-      }
-
-      try {
-        await runReplicate({
-          name: opts.name,
-          template: opts.template,
-          path: opts.path,
-          force: opts.force,
-          skip: opts.skip,
-          preset: opts.preset,
-        });
-      } catch (error) {
-        if (error instanceof ReplicationAbortedError) {
-          process.exitCode = 0;
-          return;
-        }
-        const message = error instanceof Error ? error.message : String(error);
-        console.error(message);
-        process.exitCode = 1;
-      }
-    });
-
-  cli.parse(['node', 'smith', ...argv]);
+  console.error(`Unknown command: ${command}`);
+  await printGlobalHelp();
+  process.exitCode = 1;
 }
 
 if (require.main === module) {

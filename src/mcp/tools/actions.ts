@@ -1,83 +1,33 @@
-import { existsSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { loadRootConfig, loadTemplateConfig } from '../../config/loadConfig';
-import { mergeConfigs } from '../../config/mergeConfig';
-import { validatePresets } from '../../config/validatePresets';
-import { runReplicate } from '../../commands/replicate';
-import { requireSmithRoot } from '../context';
-
-function jsonResult(payload: unknown) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
-  };
-}
-
-function normalizeCwd(cwd?: string): string {
-  return resolve(cwd ?? process.cwd());
-}
-
-function resolveTemplateDir(root: string, template: string): string {
-  return join(root, '.smith', 'templates', template);
-}
-
-async function withCwd<T>(cwd: string, fn: () => Promise<T>): Promise<T> {
-  const previous = process.cwd();
-  process.chdir(cwd);
-  try {
-    return await fn();
-  } finally {
-    process.chdir(previous);
-  }
-}
+import { getGlobalSmithDir } from '../../paths/globalSmithHome';
+import { discoverSmithRoot, discoverTemplateDir } from '../../services/discover';
+import { replicate } from '../../services/replicate';
+import { validateSmith } from '../../services/validate';
+import {
+  assertMcpReplicatePath,
+  jsonResult,
+  normalizeCwd,
+  resolveMcpReplicateFlags,
+} from './helpers';
 
 export function registerActionTools(server: McpServer): void {
   server.registerTool(
     'smith_validate',
     {
       description:
-        'Load and validate .smith/config.js and optional template config.js. Run after editing config. Throws if config is invalid.',
+        'Load and validate ~/.smith/config.js, optional project .smith/config.js, and optional template config.js. Throws if config is invalid.',
       inputSchema: {
         cwd: z.string().optional(),
         template: z.string().optional(),
       },
     },
     async ({ cwd, template }) => {
-      const root = requireSmithRoot(normalizeCwd(cwd));
-      const rootConfig = await loadRootConfig(root);
-
-      const rootErrors = validatePresets(rootConfig.presets, rootConfig.defaultPreset);
-      if (rootErrors.length > 0) {
-        throw new Error(rootErrors.join('\n'));
-      }
-
-      if (!template) {
-        return jsonResult({
-          ok: true,
-          root,
-          validated: ['root'],
-        });
-      }
-
-      const templateDir = resolveTemplateDir(root, template);
-      if (!existsSync(templateDir) || !statSync(templateDir).isDirectory()) {
-        throw new Error(`Template not found: ${template}`);
-      }
-
-      const templateConfig = await loadTemplateConfig(templateDir);
-      const merged = mergeConfigs(rootConfig, templateConfig);
-      const mergedErrors = validatePresets(merged.presets, merged.defaultPreset);
-      if (mergedErrors.length > 0) {
-        throw new Error(mergedErrors.join('\n'));
-      }
-
-      return jsonResult({
-        ok: true,
-        root,
+      const result = await validateSmith({
+        cwd: normalizeCwd(cwd),
         template,
-        validated: ['root', 'template'],
       });
+      return jsonResult(result);
     },
   );
 
@@ -85,7 +35,7 @@ export function registerActionTools(server: McpServer): void {
     'smith_replicate',
     {
       description:
-        'Generate files from a smith template. Required: name, template. Optional: path (output root), preset (template preset name), force (overwrite), skip (keep existing). Do not use force and skip together. Hooks run: root before → template before → replicate → template after → root after.',
+        'Generate files from a local or global smith template. Required: name, template. Optional: path (relative only — absolute paths, `..` segments, and absolute rootDir are rejected), preset, force, skip. When neither force nor skip is set, skip defaults to true (MCP is non-interactive; opt into force to overwrite). Resolves project templates first, then ~/.smith/templates. Config merge: global → project → template. Template config.js/hooks execute in the MCP host.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string(),
@@ -97,22 +47,38 @@ export function registerActionTools(server: McpServer): void {
       },
     },
     async ({ cwd, name, template, path, preset, force, skip }) => {
-      const runCwd = normalizeCwd(cwd);
-      const root = requireSmithRoot(runCwd);
+      const { force: resolvedForce, skip: resolvedSkip } = resolveMcpReplicateFlags(force, skip);
+      assertMcpReplicatePath(path);
 
-      await withCwd(runCwd, async () => {
-        await runReplicate({ name, template, path, preset, force, skip });
+      const runCwd = normalizeCwd(cwd);
+      const root = discoverSmithRoot(runCwd);
+      const { source } = discoverTemplateDir(runCwd, template);
+
+      const result = await replicate({
+        cwd: runCwd,
+        name,
+        template,
+        path,
+        preset,
+        force: resolvedForce,
+        skip: resolvedSkip,
       });
 
       return jsonResult({
         ok: true,
         root,
+        globalSmithDir: getGlobalSmithDir(),
         name,
         template,
+        source,
         path: path ?? null,
+        outputPath: result.outputPath,
         preset: preset ?? null,
-        force: force ?? false,
-        skip: skip ?? false,
+        force: resolvedForce,
+        skip: resolvedSkip,
+        written: result.written,
+        skipped: result.skipped,
+        warnings: result.warnings,
       });
     },
   );

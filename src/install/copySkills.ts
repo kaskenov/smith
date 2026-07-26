@@ -1,8 +1,9 @@
 import { cpSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { UsageError } from '../core/errors';
 import { SMITH_SKILL_NAMES } from './constants';
-import { getBundledDir } from './packageRoot';
+import { getBundledDir } from './bundledRoot';
 
 export function copyBundledSkills(options: {
   targetRoot: string;
@@ -15,7 +16,7 @@ export function copyBundledSkills(options: {
   for (const name of SMITH_SKILL_NAMES) {
     const dest = join(targetRoot, name);
     if (existsSync(dest) && !force) {
-      throw new Error(dest);
+      throw new UsageError(`Skill already installed at ${dest}. Use --force to overwrite.`);
     }
     cpSync(join(bundledDir, 'skills', name), dest, { recursive: true, force: !!force });
     copied.push(name);

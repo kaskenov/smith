@@ -26,19 +26,41 @@ export interface SmithConfigInput {
   presets?: Record<string, PresetConfig>;
 }
 
-export interface SmithConfig {
+/** Data-only config (no hooks). Produced by mergeConfigs. */
+export interface SmithConfigData {
   rootDir?: string;
   placeholder: PlaceholderDelimiters;
   variables: Record<string, VariableFn>;
-  before?: HookFn;
-  after?: HookFn;
   defaultPreset?: string;
   presets?: Record<string, PresetConfig>;
+}
+
+/** Full config including optional hooks (loaded layers). */
+export interface SmithConfig extends SmithConfigData {
+  before?: HookFn;
+  after?: HookFn;
 }
 
 export type VariableMap = Record<string, string>;
 
 export type ConflictPolicy = 'prompt' | 'force' | 'skip';
+
+export interface ConflictInput {
+  target: string;
+  existing: string;
+  incoming: string;
+}
+
+export type ConflictResolution =
+  | { action: 'write' }
+  | { action: 'skip' }
+  | { action: 'abort' }
+  | { action: 'merge'; content: string };
+
+export type ConflictResolver = (
+  policy: ConflictPolicy,
+  input: ConflictInput,
+) => Promise<ConflictResolution>;
 
 export interface FormatAPI {
   pascal(input: string): string;
@@ -98,4 +120,20 @@ export interface ReplicateOptions {
   force?: boolean;
   skip?: boolean;
   preset?: string;
+  /** Working directory for project discovery; defaults to process.cwd() */
+  cwd?: string;
+  /**
+   * Allow absolute --path and `..` escape past project root (CLI: --allow-absolute).
+   * Absolute rootDir / `..` in config rootDir are never allowed.
+   */
+  allowAbsolutePath?: boolean;
+  /** Conflict handler; defaults to non-interactive policy (force/skip only) */
+  conflictResolver?: ConflictResolver;
+}
+
+export interface ReplicateResult {
+  outputPath: string;
+  written: string[];
+  skipped: string[];
+  warnings: string[];
 }

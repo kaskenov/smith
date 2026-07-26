@@ -21,11 +21,17 @@ describe('detectGlobalPackageManager', () => {
     jest.restoreAllMocks();
   });
 
-  it('detects pnpm from npm_config_user_agent', () => {
-    process.env.npm_config_user_agent = 'pnpm/10.0.0 npm/? node/v22.0.0';
+  it('detects pnpm yarn and bun from npm_config_user_agent', () => {
     findSmithPackageRootMock.mockReturnValue('/usr/lib/node_modules/@kaskenov/smith');
 
+    process.env.npm_config_user_agent = 'pnpm/10.0.0 npm/? node/v22.0.0';
     expect(detectGlobalPackageManager()).toBe('pnpm');
+
+    process.env.npm_config_user_agent = 'yarn/1.22.0 npm/? node/v22.0.0';
+    expect(detectGlobalPackageManager()).toBe('yarn');
+
+    process.env.npm_config_user_agent = 'bun/1.0.0 npm/? node/v22.0.0';
+    expect(detectGlobalPackageManager()).toBe('bun');
   });
 
   it('detects pnpm from the install path', () => {
@@ -55,12 +61,24 @@ describe('detectGlobalPackageManager', () => {
 });
 
 describe('formatGlobalUpdateCommand', () => {
-  it('formats pnpm and npm update commands', () => {
+  it('formats pnpm yarn bun and npm update commands', () => {
     expect(formatGlobalUpdateCommand('@kaskenov/smith', '3.0.0', 'pnpm')).toBe(
       'pnpm add -g @kaskenov/smith@3.0.0',
+    );
+    expect(formatGlobalUpdateCommand('@kaskenov/smith', '3.0.0', 'yarn')).toBe(
+      'yarn global add @kaskenov/smith@3.0.0',
+    );
+    expect(formatGlobalUpdateCommand('@kaskenov/smith', '3.0.0', 'bun')).toBe(
+      'bun install -g @kaskenov/smith@3.0.0',
     );
     expect(formatGlobalUpdateCommand('@kaskenov/smith', '3.0.0', 'npm')).toBe(
       'npm install -g @kaskenov/smith@3.0.0',
     );
+  });
+
+  it('throws on unsupported package manager values', () => {
+    expect(() =>
+      formatGlobalUpdateCommand('@kaskenov/smith', '3.0.0', 'cargo' as 'npm'),
+    ).toThrow('Unsupported package manager');
   });
 });

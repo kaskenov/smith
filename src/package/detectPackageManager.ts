@@ -1,3 +1,4 @@
+import { InternalError } from '../core/errors';
 import { findSmithPackageRoot } from './packageRoot';
 
 export type GlobalPackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun';
@@ -29,7 +30,11 @@ export function formatGlobalUpdateCommand(
       return `yarn global add ${spec}`;
     case 'bun':
       return `bun install -g ${spec}`;
-    default:
+    case 'npm':
       return `npm install -g ${spec}`;
+    default: {
+      const _exhaustive: never = manager;
+      throw new InternalError(`Unsupported package manager: ${String(_exhaustive)}`);
+    }
   }
 }

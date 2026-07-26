@@ -58,16 +58,18 @@ describe('registry', () => {
   });
 
   describe('notifyIfNewerVersion', () => {
-    it('logs when a newer version is available', async () => {
+    it('logs to stderr when a newer version is available', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ 'dist-tags': { latest: '9.9.9' } }),
       }) as unknown as typeof fetch;
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
       const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
       await notifyIfNewerVersion('1.0.0');
 
-      expect(logSpy).toHaveBeenCalledWith(
+      expect(logSpy).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(
         `A newer version of ${PACKAGE_NAME} is available: 9.9.9. You are currently on version: 1.0.0.`,
       );
     });
@@ -77,11 +79,13 @@ describe('registry', () => {
         ok: true,
         json: async () => ({ 'dist-tags': { latest: '2.0.0' } }),
       }) as unknown as typeof fetch;
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
       const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
       await notifyIfNewerVersion('2.0.0');
 
       expect(logSpy).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
     });
 
     it('stays silent when registry lookup fails', async () => {
@@ -95,22 +99,36 @@ describe('registry', () => {
       expect(errorSpy).not.toHaveBeenCalled();
     });
 
-    it('logs an error when the version check throws unexpectedly', async () => {
+    it('logs an error when the version notify write throws unexpectedly', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ 'dist-tags': { latest: '9.9.9' } }),
       });
-      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-      jest.spyOn(console, 'log').mockImplementation(() => {
-        throw new Error('write failed');
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation((message) => {
+        if (typeof message === 'string' && message.startsWith('A newer version')) {
+          throw new Error('write failed');
+        }
       });
 
       await notifyIfNewerVersion('1.0.0');
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        'Failed to check for the latest version:',
-        expect.any(Error),
-      );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to check for the latest version: write failed');
+    });
+
+    it('logs an error when the version notify write throws a non-Error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ 'dist-tags': { latest: '9.9.9' } }),
+      });
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation((message) => {
+        if (typeof message === 'string' && message.startsWith('A newer version')) {
+          throw 'write failed';
+        }
+      });
+
+      await notifyIfNewerVersion('1.0.0');
+
+      expect(errorSpy).toHaveBeenCalledWith('Failed to check for the latest version: write failed');
     });
   });
 });

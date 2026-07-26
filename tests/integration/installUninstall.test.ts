@@ -153,6 +153,19 @@ describe('install uninstall round-trip', () => {
     expect(logs.some((line) => line.includes('skills not installed'))).toBe(true);
   });
 
+  it('dry-run uninstall skills when not installed reports not installed', async () => {
+    const tmpRoot = makeTmpRoot();
+    const logs: string[] = [];
+    jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    await runUninstallSkills({ cwd: tmpRoot, cursor: true, dryRun: true });
+
+    expect(logs.some((line) => line.startsWith('Would remove'))).toBe(false);
+    expect(logs.some((line) => line.includes('skills not installed'))).toBe(true);
+  });
+
   it('dry-run uninstall MCP when not installed does not log writes', async () => {
     const tmpRoot = makeTmpRoot();
     const logs: string[] = [];

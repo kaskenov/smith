@@ -4,6 +4,7 @@ import { runGlobalPackageUpdate } from '../package/globalUpdate';
 import { fetchLatestVersion, PACKAGE_NAME } from '../package/registry';
 import { readPackageVersion } from '../package/version';
 import { brandSmith } from '../terminal/brand';
+import { reportCliError } from './cliFlags';
 
 export async function runUpdate(): Promise<void> {
   try {
@@ -27,7 +28,6 @@ export async function runUpdate(): Promise<void> {
     console.log(brandSmith(`smith updated to v${latestVersion}.`));
     console.log('Open a new shell and run smith --version to verify.');
   } catch (error) {
-    console.error('Failed to update:', error);
-    process.exitCode = 1;
+    reportCliError(error, 'Failed to update: ');
   }
 }

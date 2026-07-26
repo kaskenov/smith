@@ -1,31 +1,23 @@
-import { select } from '@inquirer/prompts';
-import { resolveConflict } from '../../src/core/conflicts';
+import { resolveConflictByPolicy } from '../../src/core/conflicts';
 
-jest.mock('@inquirer/prompts', () => ({
-  select: jest.fn(),
-}));
+const input = {
+  target: '/tmp/file.txt',
+  existing: 'keep me',
+  incoming: 'overwrite me',
+};
 
-describe('resolveConflict', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
+describe('resolveConflictByPolicy', () => {
   it('force always writes', async () => {
-    expect(await resolveConflict('force', '/x')).toBe('write');
+    expect(await resolveConflictByPolicy('force', input)).toEqual({ action: 'write' });
   });
 
   it('skip always skips', async () => {
-    expect(await resolveConflict('skip', '/x')).toBe('skip');
+    expect(await resolveConflictByPolicy('skip', input)).toEqual({ action: 'skip' });
   });
 
-  it('prompts when policy is prompt', async () => {
-    jest.mocked(select).mockResolvedValue('abort');
-
-    await expect(resolveConflict('prompt', '/tmp/file.txt')).resolves.toBe('abort');
-    expect(select).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'File exists: /tmp/file.txt',
-      }),
+  it('throws for prompt in non-interactive policy', async () => {
+    await expect(resolveConflictByPolicy('prompt', input)).rejects.toThrow(
+      'Cannot resolve file conflicts in non-interactive mode',
     );
   });
 });

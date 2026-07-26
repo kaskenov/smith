@@ -1,19 +1,22 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { findSmithPackageRoot } from './packageRoot';
 
 interface PackageJson {
   version: string;
   description: string;
 }
 
+function readPackageJson(): PackageJson {
+  const root = findSmithPackageRoot(__dirname);
+  const pkgPath = join(root, 'package.json');
+  return JSON.parse(readFileSync(pkgPath, 'utf8')) as PackageJson;
+}
+
 export function readPackageVersion(): string {
-  const pkgPath = join(__dirname, '../../package.json');
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as PackageJson;
-  return pkg.version;
+  return readPackageJson().version;
 }
 
 export function readPackageDescription(): string {
-  const pkgPath = join(__dirname, '../../package.json');
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as PackageJson;
-  return pkg.description;
+  return readPackageJson().description;
 }

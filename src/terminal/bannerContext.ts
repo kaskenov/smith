@@ -1,6 +1,9 @@
 import { basename } from 'node:path';
-import { listAvailableTemplates } from '../core/listTemplates';
-import { findSmithRoot } from '../core/resolveRoot';
+import {
+  discoverGlobalTemplateNames,
+  discoverSmithRoot,
+  discoverTemplates,
+} from '../services/discover';
 import { findNewerVersion } from '../package/registry';
 import { readPackageVersion } from '../package/version';
 
@@ -10,14 +13,20 @@ export interface SmithBannerContext {
 }
 
 export function resolveProjectContext(cwd = process.cwd()): string | undefined {
-  const smithRoot = findSmithRoot(cwd);
-  if (!smithRoot) return undefined;
+  const smithRoot = discoverSmithRoot(cwd);
+  const templates = discoverTemplates(cwd);
+  const templateList =
+    templates.length > 0
+      ? templates.map((entry) => `${entry.name} (${entry.source})`).join(', ')
+      : '(none)';
 
-  const templates = listAvailableTemplates(smithRoot);
-  const projectName = basename(smithRoot);
-  const templateList = templates.length > 0 ? templates.join(', ') : '(none)';
+  if (smithRoot) {
+    return `Project: ${basename(smithRoot)} · templates: ${templateList}`;
+  }
 
-  return `Project: ${projectName} · templates: ${templateList}`;
+  const globals = discoverGlobalTemplateNames();
+  if (globals.length === 0) return undefined;
+  return `Global templates: ${globals.join(', ')}`;
 }
 
 export async function resolveSmithBannerContext(options: {

@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { findSmithRoot } from '../../src/core/resolveRoot';
@@ -23,5 +23,18 @@ describe('findSmithRoot', () => {
 
   it('returns null when .smith not found', () => {
     expect(findSmithRoot(base)).toBeNull();
+  });
+
+  it('ignores .smith when it is a symlink', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'smith-outside-'));
+    writeFileSync(join(outside, 'config.js'), 'module.exports = {};', 'utf8');
+    try {
+      symlinkSync(outside, join(base, '.smith'));
+    } catch {
+      rmSync(outside, { recursive: true, force: true });
+      return;
+    }
+    expect(findSmithRoot(base)).toBeNull();
+    rmSync(outside, { recursive: true, force: true });
   });
 });
