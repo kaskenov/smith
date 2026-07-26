@@ -1,20 +1,18 @@
-import { select } from '@inquirer/prompts';
-import type { ConflictPolicy } from '../types';
+import type { ConflictInput, ConflictPolicy, ConflictResolution } from '../types';
+import { UsageError } from './errors';
 
-export async function resolveConflict(
+/**
+ * Non-interactive conflict policy: force writes, skip skips, prompt throws.
+ * Interactive prompting lives in terminal/promptConflict — keep core free of Inquirer.
+ */
+export async function resolveConflictByPolicy(
   policy: ConflictPolicy,
-  target: string,
-): Promise<'write' | 'skip' | 'abort'> {
-  if (policy === 'force') return 'write';
-  if (policy === 'skip') return 'skip';
+  _input: ConflictInput,
+): Promise<ConflictResolution> {
+  if (policy === 'force') return { action: 'write' };
+  if (policy === 'skip') return { action: 'skip' };
 
-  const answer = await select<'write' | 'skip' | 'abort'>({
-    message: `File exists: ${target}`,
-    choices: [
-      { name: 'Overwrite', value: 'write' },
-      { name: 'Skip', value: 'skip' },
-      { name: 'Abort', value: 'abort' },
-    ],
-  });
-  return answer;
+  throw new UsageError(
+    'Cannot resolve file conflicts in non-interactive mode. Use --force or --skip.',
+  );
 }

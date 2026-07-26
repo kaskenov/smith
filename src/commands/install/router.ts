@@ -1,4 +1,6 @@
 import { parseAgentFlags } from '../agentFlags';
+import { isHelpFlag, reportCliError } from '../cliFlags';
+import { UsageError } from '../../core/errors';
 import {
   printInstallHelp,
   printInstallMcpHelp,
@@ -12,17 +14,13 @@ export { parseAgentFlags as parseInstallFlags } from '../agentFlags';
 
 const INSTALL_SUBCOMMANDS = new Set(['mcp', 'skills', 'list']);
 
-function isHelpFlag(arg: string): boolean {
-  return arg === '-h' || arg === '--help';
-}
-
 function isInstallSubcommand(arg: string): boolean {
   return INSTALL_SUBCOMMANDS.has(arg);
 }
 
 async function routeInstall(argv: string[]): Promise<void> {
   if (argv[0] !== 'install') {
-    throw new Error('Expected install command');
+    throw new UsageError('Expected install command');
   }
 
   const rest = argv.slice(1);
@@ -65,7 +63,7 @@ async function routeInstall(argv: string[]): Promise<void> {
       await runInstallList(parseAgentFlags(afterSubcommand));
       return;
     default:
-      throw new Error(`Unknown install subcommand: ${subcommand}`);
+      throw new UsageError(`Unknown install subcommand: ${subcommand}`);
   }
 }
 
@@ -73,8 +71,6 @@ export async function runInstall(argv: string[]): Promise<void> {
   try {
     await routeInstall(argv);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
-    process.exitCode = 1;
+    reportCliError(error);
   }
 }

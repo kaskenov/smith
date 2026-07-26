@@ -1,7 +1,8 @@
-import type { SmithConfig, SmithContext, SmithHelper, VariableMap } from '../types';
+import type { SmithConfigData, SmithContext, SmithHelper, VariableMap } from '../types';
+import { ValidationError } from './errors';
 
 export function resolveVariables(
-  config: SmithConfig,
+  config: SmithConfigData,
   ctx: SmithContext,
   smith: SmithHelper,
 ): VariableMap {
@@ -11,7 +12,7 @@ export function resolveVariables(
       result[key] = fn(ctx, smith);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Variable "${key}" failed: ${message}`);
+      throw new ValidationError(`Variable "${key}" failed: ${message}`);
     }
   }
   return result;

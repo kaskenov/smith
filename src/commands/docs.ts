@@ -10,30 +10,43 @@ export function printGlobalDocs(): void {
   console.log('Documentation:');
   console.log('');
   printDocSection('Project setup', [
-    'Create .smith/ at the project root:',
+    'Create .smith/ at the project root (or run smith init):',
     '  .smith/config.js',
     '  .smith/templates/<template>/...',
     '',
-    'Root config uses createSmithConfig for shared variables, placeholders, and hooks.',
+    'Root config uses createSmithConfig (@kaskenov/smith/config) for shared variables, placeholders, and hooks.',
     'Template folders can add config.js to override rootDir, variables, and local hooks.',
+  ]);
+  printDocSection('Global templates', [
+    'User store at ~/.smith/:',
+    '  config.js              shared variables (NAME_PASCAL, NAME_KEBAB, ...)',
+    '  templates/<template>/  global templates',
+    '  sources.json           recorded add --from metadata',
+    '',
+    'smith templates add <name> --from <path|git>',
+    'smith templates list | remove | update | init-config',
+    'See: smith templates --help',
   ]);
   printDocSection('List templates', [
     'smith list',
     '',
-    'Lists template folder names under .smith/templates/ in the current smith project.',
+    'Lists local project templates and global ~/.smith/templates (source marked).',
   ]);
   printDocSection('Replicate', [
-    'smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip]',
+    'smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip] [--allow-absolute]',
     'smith r ...',
     '',
     '--name      Source value for template variables (required)',
-    '--template  Template folder under .smith/templates/ (required)',
-    '--path      Output root directory',
+    '--template  Local or global template name (required)',
+    '--path      Output root directory (relative by default; no `..`; use --allow-absolute for absolute/`..`)',
     '--preset    Preset name from template config',
     '--force     Overwrite existing files',
     '--skip      Keep existing files',
     '',
-    'Hook order: root before → template before → replicate → template after → root after.',
+    'Resolves local .smith/templates first, then ~/.smith/templates.',
+    'Works without a project .smith/ when the template is global.',
+    'Config merge: global → project → template.',
+    'Hook order: global before → project before → template before → replicate → afters reverse.',
     'See: smith replicate --help',
   ]);
   printDocSection('Install agent tooling', [
@@ -49,6 +62,7 @@ export function printGlobalDocs(): void {
   printDocSection('Uninstall', [
     'smith uninstall mcp [--local|--global] [--cursor|--claude|--qwen] [--dry-run]',
     'smith uninstall skills ...',
+    'smith uninstall list ...',
     '',
     'Removes smith MCP config or agent skills from selected agents and scope.',
     'See: smith uninstall --help',
@@ -64,12 +78,12 @@ export function printReplicateDocs(): void {
   console.log('Documentation:');
   console.log('');
   printDocSection('Overview', [
-    'Generates files from a template folder under .smith/templates/.',
+    'Generates files from a local or global template folder.',
     'Placeholder substitution runs in file names and file contents.',
   ]);
   printDocSection('Required flags', [
     '--name <name>       Value exposed to template variables (e.g. Button, card-item)',
-    '--template <name>   Template folder name under .smith/templates/',
+    '--template <name>   Local (.smith/templates) or global (~/.smith/templates) name',
   ]);
   printDocSection('Optional flags', [
     '--path <path>       Override output root for generated files',
@@ -77,11 +91,18 @@ export function printReplicateDocs(): void {
     '--force             Overwrite conflicting files',
     '--skip              Keep existing conflicting files',
   ]);
-  printDocSection('Template config', [
-    'Each template may define .smith/templates/<template>/config.js.',
-    'Local config merges with root .smith/config.js.',
-    'Variables with the same key are overridden by the template.',
-    'Use defaultPreset and presets in config to filter which files replicate.',
+  printDocSection('Conflict resolution', [
+    'When a destination file already exists and neither --force nor --skip is set,',
+    'smith shows a 3-way preview (existing, incoming, unified diff) and prompts:',
+    '  Keep existing file | Overwrite with template | Merge in editor | Abort',
+    'Merge opens your $EDITOR with git-style conflict markers to combine both versions.',
+    'In non-interactive mode (no TTY), use --force or --skip.',
+  ]);
+  printDocSection('Config merge', [
+    'Layers: ~/.smith/config.js → project .smith/config.js → template config.js.',
+    'Later layers override variables, placeholder, rootDir, and presets.',
+    'Hooks: global before → project before → template before → replicate → afters reverse.',
+    'A project .smith/ is optional when using a global template.',
   ]);
   printDocSection('Nested templates', [
     'Templates can use nested folders and placeholders in directory names, e.g.:',
@@ -89,8 +110,7 @@ export function printReplicateDocs(): void {
   ]);
   printDocSection('Discover templates', [
     'smith list',
-    '',
-    'Lists available template folders in the current smith project.',
+    'smith templates list',
   ]);
 }
 
@@ -100,16 +120,45 @@ export function printListDocs(): void {
   printDocSection('Usage', [
     'smith list',
     '',
-    'Walks up from the current directory to find .smith/ and prints template folder names',
-    'from .smith/templates/, sorted alphabetically.',
+    'Lists project templates (if inside a smith project) and global ~/.smith/templates.',
+    'Local names win when both exist.',
   ]);
   printDocSection('Output', [
-    'One template name per line. If no templates exist, prints a short empty message.',
-    'If not inside a smith project, exits with an error.',
+    'One line per template: <name> (local|global).',
+    'If none exist, prints a short empty message.',
   ]);
   printDocSection('Related commands', [
+    'smith templates add <name> --from <path|git>',
     'smith replicate --name <name> --template <template>',
     'smith install list   (shows installed MCP/skills, not project templates)',
+  ]);
+}
+
+export function printTemplatesDocs(): void {
+  console.log('Documentation:');
+  console.log('');
+  printDocSection('Overview', [
+    'Manages the user-global template store under ~/.smith/.',
+    'Global config.js provides shared variables such as NAME_PASCAL and NAME_KEBAB.',
+  ]);
+  printDocSection('Add', [
+    'smith templates add <name> --from <path|git> [--path <sub>] [--ref <ref>] [--force] [--acknowledge-executable-config]',
+    '',
+    '--from path   Copy an existing directory (including npm package folders)',
+    '--from git    Shallow-clone a git URL, then copy the template folder',
+    '--path        Subdirectory inside the source that is the template',
+    '--ref         Git branch or tag',
+    '--force       Overwrite an existing global template',
+    '--acknowledge-executable-config  Required for add/update (templates may run config.js/hooks)',
+    '',
+    'Templates may include config.js/hooks that execute on replicate/validate.',
+    'MCP and CLI both require explicit acknowledgement for add/update.',
+  ]);
+  printDocSection('Other subcommands', [
+    'list          Local + global templates with source markers',
+    'remove        Delete a global template (requires --confirm)',
+    'update        Re-fetch from recorded sources (requires --acknowledge-executable-config)',
+    'init-config   Write ~/.smith/config.js starter if missing',
   ]);
 }
 
@@ -194,6 +243,7 @@ export function printUninstallDocs(): void {
   printDocSection('Subcommands', [
     'mcp      Remove smith MCP server entry from agent config',
     'skills   Remove smith skill directories',
+    'list     Show installed MCP/skills status (same as install list)',
   ]);
   printDocSection('Flags', [
     '--cursor --claude --qwen   Target one agent (default: all)',

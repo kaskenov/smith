@@ -1,5 +1,5 @@
 import { run } from '../../src/cli';
-import { ReplicationAbortedError } from '../../src/core/replicateTree';
+import { ReplicationAbortedError } from '../../src/core/errors';
 import { runReplicate } from '../../src/commands/replicate';
 
 jest.mock('../../src/commands/replicate', () => ({
@@ -26,5 +26,90 @@ describe('cli', () => {
 
     expect(process.exitCode).toBe(0);
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('parses replicate flags without cac', async () => {
+    const replicateMock = runReplicate as jest.MockedFunction<typeof runReplicate>;
+    replicateMock.mockResolvedValueOnce(undefined as never);
+
+    await run([
+      'r',
+      '--name',
+      'Button',
+      '--template',
+      'component',
+      '--path',
+      'src',
+      '--preset',
+      'core',
+      '--force',
+    ]);
+
+    expect(replicateMock).toHaveBeenCalledWith({
+      name: 'Button',
+      template: 'component',
+      path: 'src',
+      force: true,
+      skip: false,
+      preset: 'core',
+      allowAbsolutePath: false,
+    });
+  });
+
+  it('parses --allow-absolute for replicate', async () => {
+    const replicateMock = runReplicate as jest.MockedFunction<typeof runReplicate>;
+    replicateMock.mockResolvedValueOnce(undefined as never);
+
+    await run([
+      'replicate',
+      '--name',
+      'Button',
+      '--template',
+      'component',
+      '--path',
+      '/tmp/out',
+      '--allow-absolute',
+    ]);
+
+    expect(replicateMock).toHaveBeenCalledWith({
+      name: 'Button',
+      template: 'component',
+      path: '/tmp/out',
+      force: false,
+      skip: false,
+      preset: undefined,
+      allowAbsolutePath: true,
+    });
+  });
+
+  it('rejects unknown top-level commands', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await run(['nope']);
+
+    expect(process.exitCode).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith('Unknown command: nope');
+    expect(logSpy).toHaveBeenCalled();
+  });
+
+  it('requires name and template for replicate', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await run(['replicate', '--name', 'Button']);
+
+    expect(process.exitCode).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith('Missing required flags: --name and --template');
+    expect(logSpy).toHaveBeenCalled();
+  });
+
+  it('rejects unknown replicate flags', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await run(['replicate', '--name', 'Button', '--template', 'component', '--nope']);
+
+    expect(process.exitCode).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith('Unknown option: --nope');
   });
 });

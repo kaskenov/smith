@@ -34,6 +34,23 @@ describe('runGlobalPackageUpdate', () => {
     );
   });
 
+  it('throws with unknown exit code when status is null without error', () => {
+    spawnSyncMock.mockReturnValue({ status: null } as ReturnType<typeof spawnSync>);
+
+    expect(() => runGlobalPackageUpdate('@kaskenov/smith', '3.0.0', 'npm')).toThrow(
+      'npm install -g @kaskenov/smith@3.0.0 failed with exit code unknown',
+    );
+  });
+
+  it('detects package manager when manager arg is omitted', () => {
+    spawnSyncMock.mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
+    process.env.npm_config_user_agent = 'pnpm/10.0.0 npm/? node/v22.0.0';
+
+    const manager = runGlobalPackageUpdate('@kaskenov/smith', '3.0.0');
+    expect(['pnpm', 'npm', 'yarn', 'bun']).toContain(manager);
+    expect(spawnSyncMock).toHaveBeenCalled();
+  });
+
   it('throws when spawn returns an error', () => {
     spawnSyncMock.mockReturnValue({
       status: null,

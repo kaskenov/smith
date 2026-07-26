@@ -14,6 +14,7 @@ export function printUninstallHelp(): void {
   console.log('Subcommands:');
   console.log('  mcp                 Remove smith MCP server config');
   console.log('  skills              Remove smith agent skills');
+  console.log('  list                Show installed MCP/skills status');
   console.log('');
   console.log('Shared flags:');
   console.log(AGENT_FLAGS);

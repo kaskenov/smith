@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createSmith } from '../../src/smith/createSmith';
@@ -30,6 +30,93 @@ describe('createSmith', () => {
       { templateDir: join(root, 'tpl'), allowedRoots: [output] },
     );
     expect(() => smith.fs.write('/tmp/forbidden.txt', 'nope')).toThrow(/outside allowed/);
+  });
+
+  it('throws when reading outside allowed roots', () => {
+    const smith = createSmith(
+      { name: 'x', path: output, template: 't', cwd: root, root },
+      { templateDir: join(root, 'tpl'), allowedRoots: [output] },
+    );
+    expect(() => smith.fs.read('/tmp/forbidden.txt')).toThrow(/outside allowed/);
+  });
+
+  it('rejects template reads that escape the template dir', () => {
+    const templateDir = join(root, 'tpl');
+    mkdirSync(templateDir, { recursive: true });
+    const smith = createSmith(
+      { name: 'x', path: output, template: 't', cwd: root, root },
+      { templateDir, allowedRoots: [output] },
+    );
+    expect(() => smith.template.read('../secret.txt')).toThrow(/escapes template dir/);
+  });
+
+  it('rejects template reads through symlinks', () => {
+    const templateDir = join(root, 'tpl');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(root, 'secret.txt'), 'secret');
+    try {
+      symlinkSync(join(root, 'secret.txt'), join(templateDir, 'link.txt'));
+    } catch {
+      return;
+    }
+    const smith = createSmith(
+      { name: 'x', path: output, template: 't', cwd: root, root },
+      { templateDir, allowedRoots: [output] },
+    );
+    expect(() => smith.template.read('link.txt')).toThrow(/refuses symlink/);
+  });
+
+  it('rejects template reads through intermediate directory symlinks', () => {
+    const templateDir = join(root, 'tpl');
+    const outside = join(root, 'outside');
+    mkdirSync(templateDir, { recursive: true });
+    mkdirSync(outside, { recursive: true });
+    writeFileSync(join(outside, 'secret.txt'), 'secret');
+    try {
+      symlinkSync(outside, join(templateDir, 'vendor'));
+    } catch {
+      return;
+    }
+    const smith = createSmith(
+      { name: 'x', path: output, template: 't', cwd: root, root },
+      { templateDir, allowedRoots: [output] },
+    );
+    expect(() => smith.template.read('vendor/secret.txt')).toThrow(/escapes|symlink|must stay/);
+  });
+
+  it('tracks fs writes and ensureDir via onWrite for rollback', () => {
+    const tracked: Array<{ file: string; previous: string | null }> = [];
+    const smith = createSmith(
+      { name: 'x', path: output, template: 't', cwd: root, root },
+      {
+        templateDir: join(root, 'tpl'),
+        allowedRoots: [output, root],
+        onWrite: (file, previous) => tracked.push({ file, previous }),
+      },
+    );
+
+    const nested = join(output, 'nested');
+    smith.fs.ensureDir(nested);
+    smith.fs.ensureDir(nested);
+
+    const target = join(output, 'tracked.txt');
+    smith.fs.write(target, 'one');
+    smith.fs.write(target, 'two');
+    smith.fs.append(target, '\nthree');
+
+    writeFileSync(join(root, 'source.txt'), 'source');
+    const copied = join(output, 'copied-over.txt');
+    smith.fs.write(copied, 'old');
+    smith.fs.copy(join(root, 'source.txt'), copied);
+
+    expect(tracked).toEqual([
+      { file: nested, previous: null },
+      { file: target, previous: null },
+      { file: target, previous: 'one' },
+      { file: target, previous: 'two' },
+      { file: copied, previous: null },
+      { file: copied, previous: 'old' },
+    ]);
   });
 
   it('supports append, copy, ensureDir, exists, template read, and path helpers', () => {
@@ -71,6 +158,19 @@ describe('createSmith', () => {
     writeFileSync(join(root, 'source.txt'), 'source');
 
     expect(() => smith.fs.copy(join(root, 'source.txt'), '/tmp/forbidden.txt')).toThrow(
+      /outside allowed/,
+    );
+  });
+
+  it('throws when exists or copy source is outside allowed roots', () => {
+    const smith = createSmith(
+      { name: 'x', path: output, template: 't', cwd: root, root },
+      { templateDir: join(root, 'tpl'), allowedRoots: [output] },
+    );
+    writeFileSync(join(root, 'source.txt'), 'source');
+
+    expect(() => smith.fs.exists(join(root, 'source.txt'))).toThrow(/outside allowed/);
+    expect(() => smith.fs.copy(join(root, 'source.txt'), join(output, 'copied.txt'))).toThrow(
       /outside allowed/,
     );
   });

@@ -7,6 +7,7 @@ import {
   printInstallSkillsDocs,
   printListDocs,
   printReplicateDocs,
+  printTemplatesDocs,
   printUninstallDocs,
   printUninstallMcpDocs,
   printUninstallSkillsDocs,
@@ -32,8 +33,10 @@ export async function printGlobalHelp(): Promise<void> {
   console.log('  smith [command] [flags]');
   console.log('');
   console.log('Commands:');
-  console.log('  replicate, r   Create a component from a template');
-  console.log('  list           List templates in the current smith project');
+  console.log('  init           Bootstrap .smith/ in the current project');
+  console.log('  replicate, r   Create files from a template');
+  console.log('  list           List local and global templates');
+  console.log('  templates, t   Manage global templates (~/.smith)');
   console.log('  install        Install smith MCP server (default)');
   console.log('  uninstall      Remove smith MCP server and agent skills');
   console.log('  update         Update smith, its MCP, and skills');
@@ -49,22 +52,23 @@ export function printReplicateHelp(): void {
   console.log(brandSmith('smith replicate — create from template'));
   console.log('');
   console.log('Usage:');
-  console.log('  smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip]');
+  console.log('  smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip] [--allow-absolute]');
   console.log('');
   console.log('Flags:');
   console.log('  --name <name>          Name exposed to template variables');
-  console.log('  --template <template>  Template folder name under .smith/templates');
-  console.log('  --path <path>          Override output root for generated files');
+  console.log('  --template <template>  Local or global template name');
+  console.log('  --path <path>          Override output root (relative by default; no `..`)');
   console.log('  --preset <preset>      Preset name from template config');
   console.log('  --force                Overwrite conflicting files');
   console.log('  --skip                 Keep existing conflicting files');
+  console.log('  --allow-absolute       Allow absolute --path and `..` escape (opt-in)');
   console.log('  -h, --help             Show replicate help');
   console.log('');
   printReplicateDocs();
 }
 
 export function printListHelp(): void {
-  console.log(brandSmith('smith list — project templates'));
+  console.log(brandSmith('smith list — local and global templates'));
   console.log('');
   console.log('Usage:');
   console.log('  smith list');
@@ -82,6 +86,7 @@ export {
   printInstallSkillsDocs,
   printListDocs,
   printReplicateDocs,
+  printTemplatesDocs,
   printUninstallDocs,
   printUninstallMcpDocs,
   printUninstallSkillsDocs,

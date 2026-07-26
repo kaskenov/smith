@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
+import { InternalError } from '../core/errors';
 import { SMITH_SKILL_NAMES } from './constants';
 
 function hasBundledSkills(bundledDir: string): boolean {
@@ -18,9 +19,12 @@ function findBundledDir(): string {
     if (parent === current) break;
     current = parent;
   }
-  throw new Error('Bundled smith skills not found. Reinstall @kaskenov/smith or run pnpm build.');
+  throw new InternalError(
+    'Bundled smith skills not found. Reinstall @kaskenov/smith or run pnpm build.',
+  );
 }
 
+/** Locate the package's bundled/ directory (skills assets). Distinct from package/packageRoot. */
 export function getBundledDir(): string {
   return findBundledDir();
 }

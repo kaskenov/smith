@@ -10,7 +10,7 @@ describe('mergeClaudeMcpEnablement', () => {
       'smith',
     );
 
-    expect(result.enableAllProjectMcpServers).toBe(true);
+    expect(result.enableAllProjectMcpServers).toBeUndefined();
     expect(result.enabledMcpjsonServers).toContain('smith');
     expect(result.permissions).toEqual({ allow: ['Shell(*)'] });
   });
@@ -33,18 +33,34 @@ describe('mergeClaudeMcpEnablement', () => {
     const result = mergeClaudeMcpEnablement(existing, 'smith');
 
     expect(result.enabledMcpjsonServers).toEqual(['smith', 'playwright']);
+    expect(result.enableAllProjectMcpServers).toBe(true);
   });
 
   it('creates enabledMcpjsonServers when missing', () => {
     const result = mergeClaudeMcpEnablement({}, 'smith');
 
-    expect(result.enableAllProjectMcpServers).toBe(true);
+    expect(result.enableAllProjectMcpServers).toBeUndefined();
     expect(result.enabledMcpjsonServers).toEqual(['smith']);
   });
 });
 
 describe('removeClaudeMcpEnablement', () => {
-  it('removes serverKey from enabledMcpjsonServers only', () => {
+  it('removes serverKey and clears enable-all when list becomes empty', () => {
+    const result = removeClaudeMcpEnablement(
+      {
+        enableAllProjectMcpServers: true,
+        enabledMcpjsonServers: ['smith'],
+        permissions: { allow: ['Shell(*)'] },
+      },
+      'smith',
+    );
+
+    expect(result.enabledMcpjsonServers).toEqual([]);
+    expect(result.enableAllProjectMcpServers).toBeUndefined();
+    expect(result.permissions).toEqual({ allow: ['Shell(*)'] });
+  });
+
+  it('keeps enable-all when other servers remain', () => {
     const result = removeClaudeMcpEnablement(
       {
         enableAllProjectMcpServers: true,
@@ -56,7 +72,6 @@ describe('removeClaudeMcpEnablement', () => {
 
     expect(result.enabledMcpjsonServers).toEqual(['playwright']);
     expect(result.enableAllProjectMcpServers).toBe(true);
-    expect(result.permissions).toEqual({ allow: ['Shell(*)'] });
   });
 
   it('preserves other keys when serverKey is not in the array', () => {
