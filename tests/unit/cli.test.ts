@@ -52,6 +52,33 @@ describe('cli', () => {
       force: true,
       skip: false,
       preset: 'core',
+      allowAbsolutePath: false,
+    });
+  });
+
+  it('parses --allow-absolute for replicate', async () => {
+    const replicateMock = runReplicate as jest.MockedFunction<typeof runReplicate>;
+    replicateMock.mockResolvedValueOnce(undefined as never);
+
+    await run([
+      'replicate',
+      '--name',
+      'Button',
+      '--template',
+      'component',
+      '--path',
+      '/tmp/out',
+      '--allow-absolute',
+    ]);
+
+    expect(replicateMock).toHaveBeenCalledWith({
+      name: 'Button',
+      template: 'component',
+      path: '/tmp/out',
+      force: false,
+      skip: false,
+      preset: undefined,
+      allowAbsolutePath: true,
     });
   });
 

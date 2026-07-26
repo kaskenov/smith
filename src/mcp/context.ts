@@ -1,9 +1,9 @@
 import { NotFoundError } from '../core/errors';
-import { findSmithRoot } from '../core/resolveRoot';
 import { resolveUnderSmithDir } from '../core/smithPath';
+import { discoverSmithRoot } from '../services/discover';
 
 export function requireSmithRoot(cwd: string): string {
-  const root = findSmithRoot(cwd);
+  const root = discoverSmithRoot(cwd);
   if (!root) {
     throw new NotFoundError('No .smith directory found.');
   }

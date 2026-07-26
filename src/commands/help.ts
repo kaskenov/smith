@@ -52,15 +52,16 @@ export function printReplicateHelp(): void {
   console.log(brandSmith('smith replicate — create from template'));
   console.log('');
   console.log('Usage:');
-  console.log('  smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip]');
+  console.log('  smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip] [--allow-absolute]');
   console.log('');
   console.log('Flags:');
   console.log('  --name <name>          Name exposed to template variables');
   console.log('  --template <template>  Local or global template name');
-  console.log('  --path <path>          Override output root for generated files');
+  console.log('  --path <path>          Override output root (relative by default)');
   console.log('  --preset <preset>      Preset name from template config');
   console.log('  --force                Overwrite conflicting files');
   console.log('  --skip                 Keep existing conflicting files');
+  console.log('  --allow-absolute       Allow absolute --path (opt-in)');
   console.log('  -h, --help             Show replicate help');
   console.log('');
   printReplicateDocs();

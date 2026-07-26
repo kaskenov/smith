@@ -33,12 +33,12 @@ export function printGlobalDocs(): void {
     'Lists local project templates and global ~/.smith/templates (source marked).',
   ]);
   printDocSection('Replicate', [
-    'smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip]',
+    'smith replicate --name <name> --template <template> [--path <path>] [--preset <preset>] [--force] [--skip] [--allow-absolute]',
     'smith r ...',
     '',
     '--name      Source value for template variables (required)',
     '--template  Local or global template name (required)',
-    '--path      Output root directory',
+    '--path      Output root directory (relative by default; use --allow-absolute for absolute)',
     '--preset    Preset name from template config',
     '--force     Overwrite existing files',
     '--skip      Keep existing files',

@@ -194,10 +194,61 @@ describe('runTemplatesAdd', () => {
     expect(existsSync(join(getGlobalTemplatesDir(), 'ssh-tpl', 'x.txt'))).toBe(true);
   });
 
-  it('rejects insecure http:// git sources', async () => {
+  it('rejects insecure http:// and git:// sources', async () => {
     await expect(
       runTemplatesAdd({ name: 'http-tpl', from: 'http://example.com/repo.git' }),
-    ).rejects.toThrow(/Insecure http:\/\//);
+    ).rejects.toThrow(/Insecure git transports/);
+    await expect(
+      runTemplatesAdd({ name: 'git-proto', from: 'git://example.com/repo.git' }),
+    ).rejects.toThrow(/Insecure git transports/);
+  });
+
+  it('throws when git clone times out', async () => {
+    spawnSyncMock.mockReturnValue({
+      status: null,
+      signal: 'SIGTERM',
+      error: Object.assign(new Error('spawnSync git ETIMEDOUT'), { code: 'ETIMEDOUT' }),
+      stdout: '',
+      stderr: '',
+      pid: 1,
+      output: [],
+    } as ReturnType<typeof spawnSync>);
+
+    await expect(
+      runTemplatesAdd({ name: 'slow-git', from: 'git@github.com:org/repo.git' }),
+    ).rejects.toThrow(/timed out/);
+  });
+
+  it('treats signalled git clone as timeout even without TIMEDOUT message', async () => {
+    spawnSyncMock.mockReturnValue({
+      status: null,
+      signal: 'SIGTERM',
+      error: new Error('spawnSync git was killed'),
+      stdout: '',
+      stderr: '',
+      pid: 1,
+      output: [],
+    } as ReturnType<typeof spawnSync>);
+
+    await expect(
+      runTemplatesAdd({ name: 'killed-git', from: 'git@github.com:org/repo.git' }),
+    ).rejects.toThrow(/timed out/);
+  });
+
+  it('throws when git clone spawn fails without timeout', async () => {
+    spawnSyncMock.mockReturnValue({
+      status: null,
+      signal: null,
+      error: new Error('spawnSync git ENOENT'),
+      stdout: '',
+      stderr: '',
+      pid: 1,
+      output: [],
+    } as ReturnType<typeof spawnSync>);
+
+    await expect(
+      runTemplatesAdd({ name: 'missing-git', from: 'git@github.com:org/repo.git' }),
+    ).rejects.toThrow('Failed to clone template source: spawnSync git ENOENT');
   });
 
   it('rejects --path that escapes via intermediate symlink', async () => {

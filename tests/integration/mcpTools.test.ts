@@ -740,11 +740,31 @@ describe('mcp tools integration', () => {
             cwd: work,
             name: 'frontend-app',
             from: source,
+            acknowledgeExecutableConfig: true,
           },
         }),
       );
       expect(add.ok).toBe(true);
       expect(add.name).toBe('frontend-app');
+
+      const addWithoutAck = await client.callTool({
+        name: 'smith_templates_add',
+        arguments: {
+          cwd: work,
+          name: 'no-ack',
+          from: source,
+        },
+      });
+      expect(addWithoutAck).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [
+            expect.objectContaining({
+              text: expect.stringMatching(/acknowledgeExecutableConfig/),
+            }),
+          ],
+        }),
+      );
 
       const update = parseToolJson(
         await client.callTool({

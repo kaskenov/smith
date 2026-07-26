@@ -27,7 +27,7 @@ async function runReplicateCommand(argv: string[]): Promise<void> {
   try {
     assertKnownFlags(args, {
       valueFlags: ['--name', '--template', '--path', '--preset'],
-      boolFlags: ['--force', '--skip'],
+      boolFlags: ['--force', '--skip', '--allow-absolute'],
     });
   } catch (error) {
     reportCliError(error);
@@ -40,6 +40,7 @@ async function runReplicateCommand(argv: string[]): Promise<void> {
   const preset = readFlag(args, '--preset');
   const force = hasFlag(args, '--force');
   const skip = hasFlag(args, '--skip');
+  const allowAbsolutePath = hasFlag(args, '--allow-absolute');
 
   if (!name || !template) {
     console.error('Missing required flags: --name and --template');
@@ -49,7 +50,7 @@ async function runReplicateCommand(argv: string[]): Promise<void> {
   }
 
   try {
-    await runReplicate({ name, template, path, force, skip, preset });
+    await runReplicate({ name, template, path, force, skip, preset, allowAbsolutePath });
   } catch (error) {
     if (error instanceof ReplicationAbortedError) {
       process.exitCode = 0;

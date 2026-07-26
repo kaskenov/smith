@@ -23,6 +23,15 @@ describe('resolveOutputBase', () => {
   it('uses cwd when there is no project root', () => {
     expect(resolveOutputBase(null, '/cwd', 'global-src', undefined)).toBe('/cwd');
   });
+
+  it('rejects absolute rootDir values', () => {
+    expect(() => resolveOutputBase('/proj', '/cwd', '/tmp/evil', undefined)).toThrow(
+      /rootDir must be relative/,
+    );
+    expect(() => resolveOutputBase('/proj', '/cwd', undefined, '/tmp/evil')).toThrow(
+      /rootDir must be relative/,
+    );
+  });
 });
 
 describe('replicate honors global rootDir', () => {
@@ -57,6 +66,7 @@ describe('replicate honors global rootDir', () => {
         force: true,
         cwd: root,
       });
+
       expect(result.outputPath).toBe(join(root, 'from-global'));
       expect(readFileSync(join(root, 'from-global', 'Widget.txt'), 'utf8')).toBe('Hello Widget');
     } finally {
@@ -65,5 +75,42 @@ describe('replicate honors global rootDir', () => {
       rmSync(root, { recursive: true, force: true });
       rmSync(home, { recursive: true, force: true });
     }
+  });
+
+  it('rejects absolute --path unless allowAbsolutePath is set', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-abs-path-'));
+    const smithDir = join(root, '.smith');
+    const templateDir = join(smithDir, 'templates', 'component');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, '{{name}}.txt'), 'Hello {{name}}', 'utf8');
+    writeFileSync(
+      join(smithDir, 'config.js'),
+      `module.exports = { placeholder: ['{{', '}}'] };`,
+      'utf8',
+    );
+
+    await expect(
+      replicate({
+        name: 'Widget',
+        template: 'component',
+        path: '/tmp/smith-forbidden-out',
+        force: true,
+        cwd: root,
+      }),
+    ).rejects.toThrow(/Absolute output path is not allowed/);
+
+    const out = join(root, 'allowed-abs');
+    const result = await replicate({
+      name: 'Widget',
+      template: 'component',
+      path: out,
+      force: true,
+      cwd: root,
+      allowAbsolutePath: true,
+    });
+    expect(result.outputPath).toBe(out);
+    expect(readFileSync(join(out, 'Widget.txt'), 'utf8')).toBe('Hello Widget');
+
+    rmSync(root, { recursive: true, force: true });
   });
 });

@@ -2,9 +2,7 @@ import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
-  lstatSync,
   mkdtempSync,
-  readdirSync,
   rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -13,6 +11,7 @@ import { ensureGlobalConfig } from '../../config/loadGlobalConfig';
 import { NotFoundError, UsageError, UnsafePathError } from '../../core/errors';
 import { isRealDirectory } from '../../core/fsGuard';
 import { isInside, isInsideResolved } from '../../core/pathSafety';
+import { assertTemplateTreeSafe } from '../../core/replicateTree';
 import { assertValidTemplateName } from '../../core/resolveTemplate';
 import { readSources, writeSources, type TemplateSourceRecord } from '../../core/templateSources';
 import { ensureGlobalSmithDir, getGlobalTemplatesDir } from '../../paths/globalSmithHome';
@@ -30,26 +29,23 @@ export interface TemplatesAddResult {
   targetDir: string;
 }
 
-function looksLikeGitSource(from: string): boolean {
+const GIT_CLONE_TIMEOUT_MS = 120_000;
+
+/** Allowlisted remotes only — no http:// or git://. */
+function isAllowedGitSource(from: string): boolean {
   return (
     from.startsWith('git@') ||
     from.startsWith('https://') ||
     from.startsWith('ssh://') ||
-    from.startsWith('github:') ||
-    from.endsWith('.git')
+    from.startsWith('github:')
   );
 }
 
-function assertNoSymlinksInTree(dir: string, base = dir): void {
-  for (const name of readdirSync(dir)) {
-    const fullPath = join(dir, name);
-    const relPath = fullPath.slice(base.length + 1);
-    if (lstatSync(fullPath).isSymbolicLink()) {
-      throw new UnsafePathError(`Template source contains symlink (not allowed): ${relPath}`);
-    }
-    if (isRealDirectory(fullPath)) {
-      assertNoSymlinksInTree(fullPath, base);
-    }
+function assertSecureGitSource(from: string): void {
+  if (from.startsWith('http://') || from.startsWith('git://')) {
+    throw new UsageError(
+      'Insecure git transports (http://, git://) are not allowed. Use https://, ssh://, git@, or github:.',
+    );
   }
 }
 
@@ -59,7 +55,7 @@ function resolveSourceDir(from: string, subPath?: string): string {
     throw new NotFoundError(`Source path not found or not a directory: ${from}`);
   }
   if (!subPath) {
-    assertNoSymlinksInTree(base);
+    assertTemplateTreeSafe(base);
     return base;
   }
 
@@ -70,7 +66,7 @@ function resolveSourceDir(from: string, subPath?: string): string {
   if (!isRealDirectory(nested)) {
     throw new NotFoundError(`Source subdirectory not found: ${subPath}`);
   }
-  assertNoSymlinksInTree(nested);
+  assertTemplateTreeSafe(nested);
   return nested;
 }
 
@@ -81,7 +77,27 @@ function cloneGitSource(from: string, ref?: string): string {
     args.push('--branch', ref);
   }
   args.push('--', from, tempDir);
-  const result = spawnSync('git', args, { encoding: 'utf8' });
+  const result = spawnSync('git', args, {
+    encoding: 'utf8',
+    timeout: GIT_CLONE_TIMEOUT_MS,
+    env: {
+      ...process.env,
+      GIT_TERMINAL_PROMPT: '0',
+      GIT_ASKPASS: 'echo',
+      GCM_INTERACTIVE: 'never',
+    },
+  });
+  if (result.error) {
+    rmSync(tempDir, { recursive: true, force: true });
+    const timedOut =
+      result.error.message.includes('TIMEDOUT') ||
+      (result.signal !== null && result.signal !== undefined);
+    throw new UsageError(
+      timedOut
+        ? `git clone timed out after ${GIT_CLONE_TIMEOUT_MS / 1000}s`
+        : `Failed to clone template source: ${result.error.message}`,
+    );
+  }
   if (result.status !== 0) {
     rmSync(tempDir, { recursive: true, force: true });
     const detail = (result.stderr || result.stdout || 'git clone failed').trim();
@@ -109,9 +125,7 @@ export async function addTemplate(options: TemplatesAddOptions): Promise<Templat
     throw new UsageError('Missing required flag: --from');
   }
 
-  if (options.from.startsWith('http://')) {
-    throw new UsageError('Insecure http:// git sources are not allowed. Use https:// or git@.');
-  }
+  assertSecureGitSource(options.from);
 
   ensureGlobalConfig();
 
@@ -130,7 +144,7 @@ export async function addTemplate(options: TemplatesAddOptions): Promise<Templat
         path: options.path,
         updatedAt: new Date().toISOString(),
       };
-    } else if (looksLikeGitSource(options.from)) {
+    } else if (isAllowedGitSource(options.from)) {
       cloneDir = cloneGitSource(options.from, options.ref);
       sourceDir = resolveSourceDir(cloneDir, options.path);
       record = {
@@ -142,7 +156,7 @@ export async function addTemplate(options: TemplatesAddOptions): Promise<Templat
       };
     } else {
       throw new UsageError(
-        `Unknown --from source: ${options.from}. Provide an existing directory or a git URL.`,
+        `Unknown --from source: ${options.from}. Provide an existing directory or an https/ssh/git@/github: URL.`,
       );
     }
 

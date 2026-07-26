@@ -12,8 +12,8 @@ export function normalizeCwd(cwd?: string): string {
 }
 
 /**
- * MCP replicate rejects absolute output paths (CLI still allows them).
- * Combined with default force:true, absolute paths would otherwise overwrite anywhere.
+ * MCP replicate rejects absolute output paths (defense in depth;
+ * replicate() also rejects absolute path/rootDir by default).
  */
 export function assertMcpReplicatePath(path: string | undefined): void {
   if (path !== undefined && isAbsolute(path)) {

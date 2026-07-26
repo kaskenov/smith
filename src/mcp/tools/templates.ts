@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { UsageError } from '../../core/errors';
 import { getGlobalSmithDir } from '../../paths/globalSmithHome';
 import { discoverTemplates } from '../../services/discover';
 import { addTemplate } from '../../services/templates/add';
@@ -13,7 +14,7 @@ export function registerTemplateTools(server: McpServer): void {
     'smith_templates_add',
     {
       description:
-        'Install a template into ~/.smith/templates from a local directory or git URL (https/ssh/git@). Ensures ~/.smith/config.js starter exists. Optional path is a subdirectory inside the source (must stay inside). Symlinks in the source are rejected. Use force to overwrite.',
+        'Install a template into ~/.smith/templates from a local directory or git URL (https/ssh/git@/github: only). Requires acknowledgeExecutableConfig:true — installed templates may execute config.js and hooks on later replicate/validate. Optional path is a subdirectory inside the source (must stay inside). Symlinks in the source are rejected. Use force to overwrite.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string(),
@@ -21,9 +22,15 @@ export function registerTemplateTools(server: McpServer): void {
         path: z.string().optional(),
         ref: z.string().optional(),
         force: z.boolean().optional(),
+        acknowledgeExecutableConfig: z.boolean().optional(),
       },
     },
-    async ({ cwd, name, from, path, ref, force }) => {
+    async ({ cwd, name, from, path, ref, force, acknowledgeExecutableConfig }) => {
+      if (acknowledgeExecutableConfig !== true) {
+        throw new UsageError(
+          'MCP templates_add requires acknowledgeExecutableConfig:true — installed templates may execute config.js/hooks on replicate/validate.',
+        );
+      }
       const runCwd = normalizeCwd(cwd);
       const result = await addTemplate({
         cwd: runCwd,
@@ -40,6 +47,7 @@ export function registerTemplateTools(server: McpServer): void {
         path: path ?? null,
         ref: ref ?? null,
         force: force ?? false,
+        acknowledgeExecutableConfig: true,
         targetDir: result.targetDir,
         globalSmithDir: getGlobalSmithDir(),
       });
@@ -64,7 +72,7 @@ export function registerTemplateTools(server: McpServer): void {
     'smith_templates_update',
     {
       description:
-        'Re-fetch global template(s) from recorded ~/.smith/sources.json. Omit name to update all recorded templates.',
+        'Re-fetch global template(s) from recorded ~/.smith/sources.json. Omit name to update all recorded templates. Updated templates may execute config.js/hooks on later replicate/validate.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string().optional(),

@@ -177,4 +177,25 @@ describe('replicateTree', () => {
 
     rmSync(root, { recursive: true, force: true });
   });
+
+  it('rejects binary template files', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-tree-bin-'));
+    const templateDir = join(root, 'template');
+    const outputRoot = join(root, 'out');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, 'blob.bin'), Buffer.from([0x00, 0x01, 0x02]));
+
+    await expect(
+      replicateTree({
+        templateDir,
+        outputRoot,
+        vars: {},
+        delimiters: ['{{', '}}'],
+        policy: 'force',
+        resolveConflict: resolveConflictByPolicy,
+      }),
+    ).rejects.toThrow(/Binary template files are not supported/);
+
+    rmSync(root, { recursive: true, force: true });
+  });
 });
