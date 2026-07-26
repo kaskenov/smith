@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -195,6 +196,32 @@ describe('replicateTree', () => {
         resolveConflict: resolveConflictByPolicy,
       }),
     ).rejects.toThrow(/Binary template files are not supported/);
+
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('rejects non-regular template nodes', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-tree-fifo-'));
+    const templateDir = join(root, 'template');
+    const outputRoot = join(root, 'out');
+    mkdirSync(templateDir, { recursive: true });
+    try {
+      execFileSync('mkfifo', [join(templateDir, 'pipe')], { stdio: 'ignore' });
+    } catch {
+      rmSync(root, { recursive: true, force: true });
+      return;
+    }
+
+    await expect(
+      replicateTree({
+        templateDir,
+        outputRoot,
+        vars: {},
+        delimiters: ['{{', '}}'],
+        policy: 'force',
+        resolveConflict: resolveConflictByPolicy,
+      }),
+    ).rejects.toThrow(/non-regular file/);
 
     rmSync(root, { recursive: true, force: true });
   });

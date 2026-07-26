@@ -23,6 +23,14 @@ export function isRealFile(path: string): boolean {
   return !stat.isSymbolicLink() && stat.isFile();
 }
 
+/** Reject symlinks and non-regular nodes (FIFO/device) at read/copy time. */
+export function assertRegularFile(path: string, label = 'Path'): void {
+  assertNotSymlink(path, label);
+  if (!isRealFile(path)) {
+    throw new UnsafePathError(`${label} is not a regular file: ${path}`);
+  }
+}
+
 /**
  * Ensure target is a real file inside root (logical + resolved containment, no symlinks).
  */
@@ -30,10 +38,7 @@ export function assertSafeFileInside(root: string, target: string, label = 'Path
   if (!isInside(target, root)) {
     throw new UnsafePathError(`${label} must stay inside ${root}`);
   }
-  assertNotSymlink(target, label);
-  if (!isRealFile(target)) {
-    throw new UnsafePathError(`${label} is not a regular file: ${target}`);
-  }
+  assertRegularFile(target, label);
   if (!isInsideResolved(target, root)) {
     throw new UnsafePathError(`${label} escapes ${root} after resolve`);
   }

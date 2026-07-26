@@ -1,5 +1,19 @@
-import { assertRelativeConfigPath, resolveOutputPath } from '../../src/core/resolvePath';
+import {
+  assertRelativeConfigPath,
+  hasParentPathSegment,
+  resolveOutputPath,
+} from '../../src/core/resolvePath';
 import { UsageError } from '../../src/core/errors';
+
+describe('hasParentPathSegment', () => {
+  it('detects .. segments', () => {
+    expect(hasParentPathSegment('../out')).toBe(true);
+    expect(hasParentPathSegment('foo/../../bar')).toBe(true);
+    expect(hasParentPathSegment('foo\\..\\bar')).toBe(true);
+    expect(hasParentPathSegment('src/out')).toBe(false);
+    expect(hasParentPathSegment('./out')).toBe(false);
+  });
+});
 
 describe('assertRelativeConfigPath', () => {
   it('allows relative and undefined values', () => {
@@ -12,6 +26,10 @@ describe('assertRelativeConfigPath', () => {
     expect(() => assertRelativeConfigPath('/tmp/evil', 'rootDir')).toThrow(
       /rootDir must be relative/,
     );
+  });
+
+  it('rejects .. segments', () => {
+    expect(() => assertRelativeConfigPath('../evil', 'rootDir')).toThrow(/must not contain '\.\.'/);
   });
 });
 
@@ -34,7 +52,26 @@ describe('resolveOutputPath', () => {
     expect(() => resolveOutputPath('/tmp/out', ctx)).toThrow(UsageError);
   });
 
+  it('rejects .. segments by default', () => {
+    expect(() => resolveOutputPath('../../outside', ctx)).toThrow(/must not contain '\.\.'/);
+    expect(() => resolveOutputPath('foo/../../outside', ctx)).toThrow(/must not contain '\.\.'/);
+  });
+
   it('allows absolute paths when allowAbsolute is set', () => {
     expect(resolveOutputPath('/tmp/out', { ...ctx, allowAbsolute: true })).toBe('/tmp/out');
+  });
+
+  it('allows .. escape when allowAbsolute is set', () => {
+    expect(resolveOutputPath('../../../outside', { ...ctx, allowAbsolute: true })).toBe('/outside');
+  });
+
+  it('rejects cwd-relative paths that resolve outside root', () => {
+    expect(() =>
+      resolveOutputPath('./out', {
+        cwd: '/elsewhere',
+        root: '/project',
+        defaultOutput: '/project',
+      }),
+    ).toThrow(/escapes project root/);
   });
 });

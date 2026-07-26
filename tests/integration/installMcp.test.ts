@@ -56,7 +56,7 @@ describe('runInstallMcp integration', () => {
     expect(mcpConfig.mcpServers[SMITH_MCP_SERVER_KEY]).toEqual(resolveSmithMcpEntry());
 
     const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
-    expect(settings.enableAllProjectMcpServers).toBe(true);
+    expect(settings.enableAllProjectMcpServers).toBeUndefined();
     expect(settings.enabledMcpjsonServers).toContain(SMITH_MCP_SERVER_KEY);
   });
 

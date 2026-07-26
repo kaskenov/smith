@@ -4,9 +4,9 @@ import { mergeConfigLayers } from '../config/mergeConfig';
 import { validatePresets } from '../config/validatePresets';
 import { ValidationError } from '../core/errors';
 import { assertTemplateTreeSafe } from '../core/replicateTree';
-import { resolveTemplateDir, type TemplateSource } from '../core/resolveTemplate';
-import { findSmithRoot } from '../core/resolveRoot';
+import type { TemplateSource } from '../core/resolveTemplate';
 import { getGlobalSmithDir } from '../paths/globalSmithHome';
+import { discoverSmithRoot, discoverTemplateDir } from './discover';
 
 export interface ValidateResult {
   ok: true;
@@ -22,7 +22,7 @@ export async function validateSmith(options: {
   template?: string;
 }): Promise<ValidateResult> {
   const cwd = options.cwd ?? process.cwd();
-  const root = findSmithRoot(cwd);
+  const root = discoverSmithRoot(cwd);
   const globalConfig = await loadGlobalConfig();
   const projectConfig = await loadRootConfig(root);
 
@@ -45,7 +45,7 @@ export async function validateSmith(options: {
     };
   }
 
-  const { templateDir, source } = resolveTemplateDir(root, options.template);
+  const { templateDir, source } = discoverTemplateDir(cwd, options.template);
   assertTemplateTreeSafe(templateDir);
   const templateConfig = await loadTemplateConfig(templateDir);
   const merged = mergeConfigLayers(globalConfig, projectConfig, templateConfig);

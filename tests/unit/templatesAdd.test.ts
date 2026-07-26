@@ -54,6 +54,7 @@ describe('runTemplatesAdd', () => {
       name: 'frontend-app',
       from: source,
       path: 'nested',
+      acknowledgeExecutableConfig: true,
     });
 
     const installed = join(getGlobalTemplatesDir(), 'frontend-app', '{{name}}.txt');
@@ -76,7 +77,9 @@ describe('runTemplatesAdd', () => {
     writeFileSync(join(source, 'nested', 'deep', 'b.txt'), 'b', 'utf8');
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    await runTemplatesAdd({ name: 'plain', from: source });
+    await runTemplatesAdd({ name: 'plain', from: source,
+      acknowledgeExecutableConfig: true,
+    });
 
     expect(existsSync(join(getGlobalTemplatesDir(), 'plain', 'a.txt'))).toBe(true);
     expect(existsSync(join(getGlobalTemplatesDir(), 'plain', 'nested', 'deep', 'b.txt'))).toBe(
@@ -90,8 +93,12 @@ describe('runTemplatesAdd', () => {
     writeFileSync(join(source, 'a.txt'), 'a', 'utf8');
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    await runTemplatesAdd({ name: 'dup', from: source });
-    await expect(runTemplatesAdd({ name: 'dup', from: source })).rejects.toThrow(
+    await runTemplatesAdd({ name: 'dup', from: source,
+      acknowledgeExecutableConfig: true,
+    });
+    await expect(runTemplatesAdd({ name: 'dup', from: source,
+      acknowledgeExecutableConfig: true,
+    })).rejects.toThrow(
       'Global template already exists: dup',
     );
 
@@ -103,22 +110,49 @@ describe('runTemplatesAdd', () => {
     writeFileSync(join(source, 'a.txt'), 'v1', 'utf8');
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    await runTemplatesAdd({ name: 'forced', from: source });
+    await runTemplatesAdd({ name: 'forced', from: source,
+      acknowledgeExecutableConfig: true,
+    });
     writeFileSync(join(source, 'a.txt'), 'v2', 'utf8');
-    await runTemplatesAdd({ name: 'forced', from: source, force: true });
+    await runTemplatesAdd({ name: 'forced', from: source, force: true,
+      acknowledgeExecutableConfig: true,
+    });
 
     expect(readFileSync(join(getGlobalTemplatesDir(), 'forced', 'a.txt'), 'utf8')).toBe('v2');
     rmSync(source, { recursive: true, force: true });
   });
 
   it('throws when --from is empty', async () => {
-    await expect(runTemplatesAdd({ name: 'x', from: '' })).rejects.toThrow(
+    await expect(runTemplatesAdd({ name: 'x', from: '',
+      acknowledgeExecutableConfig: true,
+    })).rejects.toThrow(
       'Missing required flag: --from',
     );
   });
 
+  it('requires acknowledgeExecutableConfig', async () => {
+    const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
+    writeFileSync(join(source, 'a.txt'), 'a', 'utf8');
+    await expect(runTemplatesAdd({ name: 'no-ack', from: source })).rejects.toThrow(
+      /acknowledgeExecutableConfig/,
+    );
+    rmSync(source, { recursive: true, force: true });
+  });
+
+  it('rejects git source components that start with -', async () => {
+    await expect(
+      runTemplatesAdd({
+        name: 'evil-git',
+        from: 'https://example.com/-oProxyCommand=evil/repo.git',
+        acknowledgeExecutableConfig: true,
+      }),
+    ).rejects.toThrow(/Unsafe git source component/);
+  });
+
   it('throws for invalid template name', async () => {
-    await expect(runTemplatesAdd({ name: '../evil', from: '/tmp' })).rejects.toThrow(
+    await expect(runTemplatesAdd({ name: '../evil', from: '/tmp',
+      acknowledgeExecutableConfig: true,
+    })).rejects.toThrow(
       'Invalid template name',
     );
   });
@@ -126,7 +160,9 @@ describe('runTemplatesAdd', () => {
   it('throws when source subdirectory is missing', async () => {
     const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
     await expect(
-      runTemplatesAdd({ name: 'bad-sub', from: source, path: 'missing' }),
+      runTemplatesAdd({ name: 'bad-sub', from: source, path: 'missing',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow('Source subdirectory not found: missing');
     rmSync(source, { recursive: true, force: true });
   });
@@ -147,13 +183,17 @@ describe('runTemplatesAdd', () => {
     });
 
     await expect(
-      runTemplatesAdd({ name: 'gone-clone', from: 'git@github.com:org/repo.git' }),
+      runTemplatesAdd({ name: 'gone-clone', from: 'git@github.com:org/repo.git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow('Source path not found or not a directory');
   });
 
   it('throws for unknown --from source', async () => {
     await expect(
-      runTemplatesAdd({ name: 'x', from: 'not-a-path-or-git' }),
+      runTemplatesAdd({ name: 'x', from: 'not-a-path-or-git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow('Unknown --from source');
   });
 
@@ -165,6 +205,7 @@ describe('runTemplatesAdd', () => {
       name: 'from-git',
       from: 'git@github.com:org/repo.git',
       ref: 'main',
+      acknowledgeExecutableConfig: true,
     });
 
     expect(spawnSyncMock).toHaveBeenCalled();
@@ -185,9 +226,15 @@ describe('runTemplatesAdd', () => {
     mockSuccessfulClone('x.txt', 'ok');
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    await runTemplatesAdd({ name: 'https-tpl', from: 'https://github.com/org/repo.git' });
-    await runTemplatesAdd({ name: 'gh-tpl', from: 'github:org/repo' });
-    await runTemplatesAdd({ name: 'ssh-tpl', from: 'ssh://git@host/repo.git' });
+    await runTemplatesAdd({ name: 'https-tpl', from: 'https://github.com/org/repo.git',
+      acknowledgeExecutableConfig: true,
+    });
+    await runTemplatesAdd({ name: 'gh-tpl', from: 'github:org/repo',
+      acknowledgeExecutableConfig: true,
+    });
+    await runTemplatesAdd({ name: 'ssh-tpl', from: 'ssh://git@host/repo.git',
+      acknowledgeExecutableConfig: true,
+    });
 
     expect(existsSync(join(getGlobalTemplatesDir(), 'https-tpl', 'x.txt'))).toBe(true);
     expect(existsSync(join(getGlobalTemplatesDir(), 'gh-tpl', 'x.txt'))).toBe(true);
@@ -196,10 +243,14 @@ describe('runTemplatesAdd', () => {
 
   it('rejects insecure http:// and git:// sources', async () => {
     await expect(
-      runTemplatesAdd({ name: 'http-tpl', from: 'http://example.com/repo.git' }),
+      runTemplatesAdd({ name: 'http-tpl', from: 'http://example.com/repo.git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow(/Insecure git transports/);
     await expect(
-      runTemplatesAdd({ name: 'git-proto', from: 'git://example.com/repo.git' }),
+      runTemplatesAdd({ name: 'git-proto', from: 'git://example.com/repo.git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow(/Insecure git transports/);
   });
 
@@ -215,7 +266,9 @@ describe('runTemplatesAdd', () => {
     } as ReturnType<typeof spawnSync>);
 
     await expect(
-      runTemplatesAdd({ name: 'slow-git', from: 'git@github.com:org/repo.git' }),
+      runTemplatesAdd({ name: 'slow-git', from: 'git@github.com:org/repo.git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow(/timed out/);
   });
 
@@ -231,7 +284,9 @@ describe('runTemplatesAdd', () => {
     } as ReturnType<typeof spawnSync>);
 
     await expect(
-      runTemplatesAdd({ name: 'killed-git', from: 'git@github.com:org/repo.git' }),
+      runTemplatesAdd({ name: 'killed-git', from: 'git@github.com:org/repo.git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow(/timed out/);
   });
 
@@ -247,7 +302,9 @@ describe('runTemplatesAdd', () => {
     } as ReturnType<typeof spawnSync>);
 
     await expect(
-      runTemplatesAdd({ name: 'missing-git', from: 'git@github.com:org/repo.git' }),
+      runTemplatesAdd({ name: 'missing-git', from: 'git@github.com:org/repo.git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow('Failed to clone template source: spawnSync git ENOENT');
   });
 
@@ -265,7 +322,9 @@ describe('runTemplatesAdd', () => {
     }
 
     await expect(
-      runTemplatesAdd({ name: 'via-link', from: source, path: 'vendor/sub' }),
+      runTemplatesAdd({ name: 'via-link', from: source, path: 'vendor/sub',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow(/--path must stay inside|symlink/);
 
     rmSync(source, { recursive: true, force: true });
@@ -282,7 +341,9 @@ describe('runTemplatesAdd', () => {
       return;
     }
 
-    await expect(runTemplatesAdd({ name: 'with-link', from: source })).rejects.toThrow(/symlink/);
+    await expect(runTemplatesAdd({ name: 'with-link', from: source,
+      acknowledgeExecutableConfig: true,
+    })).rejects.toThrow(/symlink/);
     rmSync(source, { recursive: true, force: true });
   });
 
@@ -297,7 +358,9 @@ describe('runTemplatesAdd', () => {
     } as ReturnType<typeof spawnSync>);
 
     await expect(
-      runTemplatesAdd({ name: 'bad-git', from: 'git@github.com:org/repo.git' }),
+      runTemplatesAdd({ name: 'bad-git', from: 'git@github.com:org/repo.git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow('Failed to clone template source: clone exploded');
   });
 
@@ -312,7 +375,9 @@ describe('runTemplatesAdd', () => {
     } as ReturnType<typeof spawnSync>);
 
     await expect(
-      runTemplatesAdd({ name: 'bad-git-2', from: 'git@github.com:org/repo.git' }),
+      runTemplatesAdd({ name: 'bad-git-2', from: 'git@github.com:org/repo.git',
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow('Failed to clone template source: git clone failed');
   });
 
@@ -336,7 +401,8 @@ describe('runTemplatesAdd', () => {
         name: 'git-sub',
         from: 'git@github.com:org/repo.git',
         path: 'nope',
-      }),
+      acknowledgeExecutableConfig: true,
+    }),
     ).rejects.toThrow('Source subdirectory not found: nope');
   });
 });

@@ -123,8 +123,8 @@ export interface ReplicateOptions {
   /** Working directory for project discovery; defaults to process.cwd() */
   cwd?: string;
   /**
-   * Allow absolute --path (CLI: --allow-absolute). Default false.
-   * Absolute rootDir in config is never allowed.
+   * Allow absolute --path and `..` escape past project root (CLI: --allow-absolute).
+   * Absolute rootDir / `..` in config rootDir are never allowed.
    */
   allowAbsolutePath?: boolean;
   /** Conflict handler; defaults to non-interactive policy (force/skip only) */

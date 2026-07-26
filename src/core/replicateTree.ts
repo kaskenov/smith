@@ -8,6 +8,7 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { ReplicationAbortedError, UnsafePathError, ValidationError } from './errors';
+import { assertRegularFile } from './fsGuard';
 import { filterFilesByPreset } from './filterFiles';
 import { isInsideResolved } from './pathSafety';
 import { substitute } from './substitute';
@@ -32,8 +33,16 @@ function walkTemplate(dir: string, base = dir): TreeEntry[] {
     if (stat.isSymbolicLink()) {
       throw new UnsafePathError(`Template contains symlink (not allowed): ${relPath}`);
     }
-    if (stat.isDirectory()) entries.push(...walkTemplate(srcPath, base));
-    else if (relPath !== 'config.js') entries.push({ srcPath, relPath });
+    if (stat.isDirectory()) {
+      entries.push(...walkTemplate(srcPath, base));
+      continue;
+    }
+    if (!stat.isFile()) {
+      throw new UnsafePathError(
+        `Template contains non-regular file (not allowed): ${relPath}`,
+      );
+    }
+    if (relPath !== 'config.js') entries.push({ srcPath, relPath });
   }
   return entries;
 }
@@ -44,6 +53,8 @@ export function assertTemplateTreeSafe(templateDir: string): void {
 }
 
 function readUtf8TemplateFile(srcPath: string, relPath: string): string {
+  // Re-check at read time (TOCTOU) — refuse symlinks / non-files planted after walk.
+  assertRegularFile(srcPath, `Template file ${relPath}`);
   const buf = readFileSync(srcPath);
   if (buf.includes(0)) {
     throw new ValidationError(

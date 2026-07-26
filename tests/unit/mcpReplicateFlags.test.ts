@@ -2,8 +2,8 @@ import { assertMcpReplicatePath, resolveMcpReplicateFlags } from '../../src/mcp/
 import { UsageError } from '../../src/core/errors';
 
 describe('resolveMcpReplicateFlags', () => {
-  it('defaults to force when neither flag is set', () => {
-    expect(resolveMcpReplicateFlags()).toEqual({ force: true, skip: false });
+  it('defaults to skip when neither flag is set', () => {
+    expect(resolveMcpReplicateFlags()).toEqual({ force: false, skip: true });
   });
 
   it('honors skip', () => {
@@ -12,6 +12,7 @@ describe('resolveMcpReplicateFlags', () => {
 
   it('honors explicit force', () => {
     expect(resolveMcpReplicateFlags(true, false)).toEqual({ force: true, skip: false });
+    expect(resolveMcpReplicateFlags(true, undefined)).toEqual({ force: true, skip: false });
   });
 
   it('rejects force and skip together', () => {
@@ -32,5 +33,9 @@ describe('assertMcpReplicatePath', () => {
 
   it('rejects absolute paths', () => {
     expect(() => assertMcpReplicatePath('/tmp/out')).toThrow(UsageError);
+  });
+
+  it('rejects .. segments', () => {
+    expect(() => assertMcpReplicatePath('../../outside')).toThrow(/must not contain '\.\.'/);
   });
 });

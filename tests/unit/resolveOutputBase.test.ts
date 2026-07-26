@@ -32,6 +32,15 @@ describe('resolveOutputBase', () => {
       /rootDir must be relative/,
     );
   });
+
+  it('rejects rootDir with .. segments', () => {
+    expect(() => resolveOutputBase('/proj', '/cwd', '../evil', undefined)).toThrow(
+      /must not contain '\.\.'/,
+    );
+    expect(() => resolveOutputBase('/proj', '/cwd', undefined, 'foo/../../evil')).toThrow(
+      /must not contain '\.\.'/,
+    );
+  });
 });
 
 describe('replicate honors global rootDir', () => {

@@ -68,9 +68,15 @@ describe('templates update/remove/init-config', () => {
       path: undefined,
       ref: undefined,
       force: true,
+      cwd: undefined,
+      acknowledgeExecutableConfig: true,
     });
 
     rmSync(source, { recursive: true, force: true });
+  });
+
+  it('requires acknowledgeExecutableConfig on updateTemplates', async () => {
+    await expect(updateTemplates()).rejects.toThrow(/acknowledgeExecutableConfig/);
   });
 
   it('updates all recorded templates', async () => {
@@ -120,11 +126,18 @@ describe('templates update/remove/init-config', () => {
 
     const addSpy = jest.spyOn(addService, 'addTemplate').mockResolvedValue({ targetDir: '/tmp/app' });
 
-    await updateTemplates();
-    await updateTemplates({ name: 'app', cwd: '/tmp/project' });
+    await updateTemplates({ acknowledgeExecutableConfig: true });
+    await updateTemplates({ name: 'app', cwd: '/tmp/project',
+      acknowledgeExecutableConfig: true,
+    });
 
     expect(addSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'app', cwd: '/tmp/project', force: true }),
+      expect.objectContaining({
+        name: 'app',
+        cwd: '/tmp/project',
+        force: true,
+        acknowledgeExecutableConfig: true,
+      }),
     );
 
     rmSync(source, { recursive: true, force: true });

@@ -6,19 +6,18 @@ import { resolvePresetSelection } from '../config/resolvePreset';
 import { validatePresets } from '../config/validatePresets';
 import { resolveConflictByPolicy } from '../core/conflicts';
 import { UsageError, ValidationError } from '../core/errors';
-import { resolveTemplateDir } from '../core/resolveTemplate';
 import { assertTemplateTreeSafe, replicateTree } from '../core/replicateTree';
 import { assertRelativeConfigPath, resolveOutputPath } from '../core/resolvePath';
-import { findSmithRoot } from '../core/resolveRoot';
 import { resolveVariables } from '../core/resolveVariables';
 import { createRollback } from '../core/rollback';
 import { createSmith } from '../smith/createSmith';
+import { discoverSmithRoot, discoverTemplateDir } from './discover';
 import type { ConflictPolicy, ReplicateOptions, ReplicateResult, SmithContext } from '../types';
 
 /**
  * Resolve output base from project rootDir, falling back to global rootDir.
  * Template rootDir is a default *output path*, not the project base — handled separately.
- * Absolute rootDir values are always rejected.
+ * Absolute rootDir values and `..` segments are always rejected; result stays under project root.
  */
 export function resolveOutputBase(
   discoveredRoot: string | null,
@@ -39,8 +38,8 @@ export async function replicate(options: ReplicateOptions): Promise<ReplicateRes
   }
 
   const cwd = options.cwd ?? process.cwd();
-  const discoveredRoot = findSmithRoot(cwd);
-  const { templateDir } = resolveTemplateDir(discoveredRoot, options.template);
+  const discoveredRoot = discoverSmithRoot(cwd);
+  const { templateDir } = discoverTemplateDir(cwd, options.template);
 
   // Reject symlink gadgets before require(config.js) or hooks can use them.
   assertTemplateTreeSafe(templateDir);
@@ -102,10 +101,11 @@ export async function replicate(options: ReplicateOptions): Promise<ReplicateRes
   };
 
   const rollback = createRollback({ cleanEmptyDirsUpTo: outputPath });
+  // Without a project root, do not widen hook fs to all of cwd — only the output path.
+  const allowedRoots = discoveredRoot ? [outputPath, outputBase] : [outputPath];
   const smith = createSmith(ctx, {
     templateDir,
-    // outputPath + outputBase cover generated files and fromRoot hooks (project root / rootDir).
-    allowedRoots: [outputPath, outputBase],
+    allowedRoots,
     onWrite: (file, previousContent, meta) => rollback.track(file, previousContent, meta),
   });
 

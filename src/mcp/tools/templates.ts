@@ -39,6 +39,7 @@ export function registerTemplateTools(server: McpServer): void {
         path,
         ref,
         force,
+        acknowledgeExecutableConfig: true,
       });
       return jsonResult({
         ok: true,
@@ -57,14 +58,19 @@ export function registerTemplateTools(server: McpServer): void {
   server.registerTool(
     'smith_templates_remove',
     {
-      description: 'Remove a global template from ~/.smith/templates and its sources.json entry.',
+      description:
+        'Remove a global template from ~/.smith/templates and its sources.json entry. Requires confirm:true.',
       inputSchema: {
         name: z.string(),
+        confirm: z.boolean().optional(),
       },
     },
-    async ({ name }) => {
+    async ({ name, confirm }) => {
+      if (confirm !== true) {
+        throw new UsageError('MCP templates_remove requires confirm:true');
+      }
       await removeTemplate(name);
-      return jsonResult({ ok: true, name, globalSmithDir: getGlobalSmithDir() });
+      return jsonResult({ ok: true, name, confirm: true, globalSmithDir: getGlobalSmithDir() });
     },
   );
 
@@ -72,18 +78,25 @@ export function registerTemplateTools(server: McpServer): void {
     'smith_templates_update',
     {
       description:
-        'Re-fetch global template(s) from recorded ~/.smith/sources.json. Omit name to update all recorded templates. Updated templates may execute config.js/hooks on later replicate/validate.',
+        'Re-fetch global template(s) from recorded ~/.smith/sources.json. Requires acknowledgeExecutableConfig:true — updated templates may execute config.js/hooks on later replicate/validate. Omit name to update all recorded templates. Sources are re-validated (git allowlist, path containment, no symlinks) via templates add.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string().optional(),
+        acknowledgeExecutableConfig: z.boolean().optional(),
       },
     },
-    async ({ cwd, name }) => {
+    async ({ cwd, name, acknowledgeExecutableConfig }) => {
+      if (acknowledgeExecutableConfig !== true) {
+        throw new UsageError(
+          'MCP templates_update requires acknowledgeExecutableConfig:true — updated templates may execute config.js/hooks on replicate/validate.',
+        );
+      }
       const runCwd = normalizeCwd(cwd);
-      await updateTemplates({ name, cwd: runCwd });
+      await updateTemplates({ name, cwd: runCwd, acknowledgeExecutableConfig: true });
       return jsonResult({
         ok: true,
         name: name ?? null,
+        acknowledgeExecutableConfig: true,
         globalSmithDir: getGlobalSmithDir(),
         templates: discoverTemplates(runCwd),
       });

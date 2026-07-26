@@ -60,6 +60,7 @@ describe('runTemplates router', () => {
       '--ref',
       'main',
       '--force',
+      '--acknowledge-executable-config',
     ]);
     expect(addSpy).toHaveBeenCalledWith({
       name: 'app',
@@ -67,7 +68,23 @@ describe('runTemplates router', () => {
       path: 'nested',
       ref: 'main',
       force: true,
+      acknowledgeExecutableConfig: true,
     });
+  });
+
+  it('requires acknowledge flag for add (including TTY)', async () => {
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const previous = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true });
+    try {
+      await runTemplates(['templates', 'add', 'app', '--from', '/tmp/src']);
+      expect(errSpy).toHaveBeenCalledWith(
+        expect.stringContaining('--acknowledge-executable-config'),
+      );
+      expect(process.exitCode).toBe(1);
+    } finally {
+      Object.defineProperty(process.stdin, 'isTTY', { value: previous, configurable: true });
+    }
   });
 
   it('errors when add is missing required args', async () => {
@@ -81,21 +98,28 @@ describe('runTemplates router', () => {
 
   it('routes remove', async () => {
     const removeSpy = jest.spyOn(removeModule, 'runTemplatesRemove').mockResolvedValue(undefined);
-    await runTemplates(['templates', 'remove', 'app']);
+    await runTemplates(['templates', 'remove', 'app', '--confirm']);
     expect(removeSpy).toHaveBeenCalledWith('app');
+  });
+
+  it('requires --confirm for remove', async () => {
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    await runTemplates(['templates', 'remove', 'app']);
+    expect(errSpy).toHaveBeenCalledWith('templates remove requires --confirm');
+    expect(process.exitCode).toBe(1);
   });
 
   it('errors when remove is missing name', async () => {
     const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     await runTemplates(['templates', 'remove']);
-    expect(errSpy).toHaveBeenCalledWith('Usage: smith templates remove <name>');
+    expect(errSpy).toHaveBeenCalledWith('Usage: smith templates remove <name> --confirm');
     expect(process.exitCode).toBe(1);
   });
 
   it('routes update with and without name', async () => {
     const updateSpy = jest.spyOn(updateModule, 'runTemplatesUpdate').mockResolvedValue(undefined);
-    await runTemplates(['templates', 'update', 'app']);
-    await runTemplates(['templates', 'update']);
+    await runTemplates(['templates', 'update', 'app', '--acknowledge-executable-config']);
+    await runTemplates(['templates', 'update', '--acknowledge-executable-config']);
     expect(updateSpy).toHaveBeenNthCalledWith(1, 'app');
     expect(updateSpy).toHaveBeenNthCalledWith(2, undefined);
   });

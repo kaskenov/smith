@@ -687,8 +687,8 @@ describe('mcp tools integration', () => {
           },
         }),
       );
-      expect(defaulted.force).toBe(true);
-      expect(defaulted.skip).toBe(false);
+      expect(defaulted.force).toBe(false);
+      expect(defaulted.skip).toBe(true);
     } finally {
       await cleanupPair(server, client);
     }
@@ -766,10 +766,29 @@ describe('mcp tools integration', () => {
         }),
       );
 
+      const updateWithoutAck = await client.callTool({
+        name: 'smith_templates_update',
+        arguments: { cwd: work, name: 'frontend-app' },
+      });
+      expect(updateWithoutAck).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [
+            expect.objectContaining({
+              text: expect.stringMatching(/acknowledgeExecutableConfig/),
+            }),
+          ],
+        }),
+      );
+
       const update = parseToolJson(
         await client.callTool({
           name: 'smith_templates_update',
-          arguments: { cwd: work, name: 'frontend-app' },
+          arguments: {
+            cwd: work,
+            name: 'frontend-app',
+            acknowledgeExecutableConfig: true,
+          },
         }),
       );
       expect(update.ok).toBe(true);
@@ -777,16 +796,31 @@ describe('mcp tools integration', () => {
       const updateAll = parseToolJson(
         await client.callTool({
           name: 'smith_templates_update',
-          arguments: { cwd: work },
+          arguments: { cwd: work, acknowledgeExecutableConfig: true },
         }),
       );
       expect(updateAll.ok).toBe(true);
       expect(updateAll.name).toBeNull();
 
+      const removeWithoutConfirm = await client.callTool({
+        name: 'smith_templates_remove',
+        arguments: { cwd: work, name: 'frontend-app' },
+      });
+      expect(removeWithoutConfirm).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [
+            expect.objectContaining({
+              text: expect.stringMatching(/confirm:true/),
+            }),
+          ],
+        }),
+      );
+
       const remove = parseToolJson(
         await client.callTool({
           name: 'smith_templates_remove',
-          arguments: { cwd: work, name: 'frontend-app' },
+          arguments: { cwd: work, name: 'frontend-app', confirm: true },
         }),
       );
       expect(remove.ok).toBe(true);
