@@ -1,4 +1,4 @@
-import { resolveMcpReplicateFlags } from '../../src/mcp/tools/helpers';
+import { assertMcpReplicatePath, resolveMcpReplicateFlags } from '../../src/mcp/tools/helpers';
 import { UsageError } from '../../src/core/errors';
 
 describe('resolveMcpReplicateFlags', () => {
@@ -20,5 +20,17 @@ describe('resolveMcpReplicateFlags', () => {
 
   it('rejects explicit force:false without skip', () => {
     expect(() => resolveMcpReplicateFlags(false, false)).toThrow(UsageError);
+  });
+});
+
+describe('assertMcpReplicatePath', () => {
+  it('allows relative paths and undefined', () => {
+    expect(() => assertMcpReplicatePath(undefined)).not.toThrow();
+    expect(() => assertMcpReplicatePath('src/out')).not.toThrow();
+    expect(() => assertMcpReplicatePath('./out')).not.toThrow();
+  });
+
+  it('rejects absolute paths', () => {
+    expect(() => assertMcpReplicatePath('/tmp/out')).toThrow(UsageError);
   });
 });

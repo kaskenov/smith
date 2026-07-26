@@ -1,4 +1,4 @@
-import { isAbsolute, join, normalize, relative, resolve } from 'node:path';
+import { isAbsolute, normalize, relative, resolve } from 'node:path';
 import { UnsafePathError } from './errors';
 
 /** Resolve a path under projectRoot/.smith/ with traversal checks. */
@@ -24,10 +24,28 @@ export function resolveUnderSmithDir(projectRoot: string, relPath: string): stri
   return resolved;
 }
 
+/**
+ * Resolve a file path under projectRoot/.smith/templates/<templateName>/.
+ * Containment is against the template directory (not merely .smith/), so
+ * ../ and ../../ cannot escape into siblings or config.js.
+ */
 export function resolveSmithTemplateFile(
   projectRoot: string,
   templateName: string,
   fileRelPath: string,
 ): string {
-  return resolveUnderSmithDir(projectRoot, join('templates', templateName, fileRelPath));
+  if (isAbsolute(fileRelPath)) {
+    throw new UnsafePathError('Path must be relative to the template directory');
+  }
+
+  const templateRoot = resolve(projectRoot, '.smith', 'templates', templateName);
+  const normalized = normalize(fileRelPath.replace(/\\/g, '/'));
+  const resolved = resolve(templateRoot, normalized);
+  const rel = relative(templateRoot, resolved);
+
+  if (rel.startsWith('..') || isAbsolute(rel)) {
+    throw new UnsafePathError(`Path must stay inside templates/${templateName}/`);
+  }
+
+  return resolved;
 }

@@ -1,8 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { getGlobalSmithDir } from '../../paths/globalSmithHome';
-import { listTemplatesWithSource } from '../../core/resolveTemplate';
-import { findSmithRoot } from '../../core/resolveRoot';
+import { discoverTemplates } from '../../services/discover';
 import { addTemplate } from '../../services/templates/add';
 import { initTemplatesConfig } from '../../services/templates/initConfig';
 import { removeTemplate } from '../../services/templates/remove';
@@ -14,7 +13,7 @@ export function registerTemplateTools(server: McpServer): void {
     'smith_templates_add',
     {
       description:
-        'Install a template into ~/.smith/templates from a local directory or git URL. Ensures ~/.smith/config.js starter exists. Optional path is a subdirectory inside the source. Use force to overwrite.',
+        'Install a template into ~/.smith/templates from a local directory or git URL (https/ssh/git@). Ensures ~/.smith/config.js starter exists. Optional path is a subdirectory inside the source (must stay inside). Symlinks in the source are rejected. Use force to overwrite.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string(),
@@ -78,7 +77,7 @@ export function registerTemplateTools(server: McpServer): void {
         ok: true,
         name: name ?? null,
         globalSmithDir: getGlobalSmithDir(),
-        templates: listTemplatesWithSource(findSmithRoot(runCwd)),
+        templates: discoverTemplates(runCwd),
       });
     },
   );

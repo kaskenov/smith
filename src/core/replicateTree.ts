@@ -38,6 +38,11 @@ function walkTemplate(dir: string, base = dir): TreeEntry[] {
   return entries;
 }
 
+/** Reject any symlink in the template tree before loading config.js or running hooks. */
+export function assertTemplateTreeSafe(templateDir: string): void {
+  walkTemplate(templateDir);
+}
+
 export async function replicateTree(options: {
   templateDir: string;
   outputRoot: string;

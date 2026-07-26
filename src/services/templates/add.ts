@@ -2,14 +2,17 @@ import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdtempSync,
+  readdirSync,
   rmSync,
-  statSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { ensureGlobalConfig } from '../../config/loadGlobalConfig';
-import { NotFoundError, UsageError, InternalError } from '../../core/errors';
+import { NotFoundError, UsageError, UnsafePathError } from '../../core/errors';
+import { isRealDirectory } from '../../core/fsGuard';
+import { isInside, isInsideResolved } from '../../core/pathSafety';
 import { assertValidTemplateName } from '../../core/resolveTemplate';
 import { readSources, writeSources, type TemplateSourceRecord } from '../../core/templateSources';
 import { ensureGlobalSmithDir, getGlobalTemplatesDir } from '../../paths/globalSmithHome';
@@ -31,23 +34,43 @@ function looksLikeGitSource(from: string): boolean {
   return (
     from.startsWith('git@') ||
     from.startsWith('https://') ||
-    from.startsWith('http://') ||
     from.startsWith('ssh://') ||
     from.startsWith('github:') ||
     from.endsWith('.git')
   );
 }
 
+function assertNoSymlinksInTree(dir: string, base = dir): void {
+  for (const name of readdirSync(dir)) {
+    const fullPath = join(dir, name);
+    const relPath = fullPath.slice(base.length + 1);
+    if (lstatSync(fullPath).isSymbolicLink()) {
+      throw new UnsafePathError(`Template source contains symlink (not allowed): ${relPath}`);
+    }
+    if (isRealDirectory(fullPath)) {
+      assertNoSymlinksInTree(fullPath, base);
+    }
+  }
+}
+
 function resolveSourceDir(from: string, subPath?: string): string {
   const base = resolve(from);
-  if (!existsSync(base) || !statSync(base).isDirectory()) {
+  if (!isRealDirectory(base)) {
     throw new NotFoundError(`Source path not found or not a directory: ${from}`);
   }
-  if (!subPath) return base;
-  const nested = join(base, subPath);
-  if (!existsSync(nested) || !statSync(nested).isDirectory()) {
+  if (!subPath) {
+    assertNoSymlinksInTree(base);
+    return base;
+  }
+
+  const nested = resolve(base, subPath);
+  if (!isInside(nested, base) || !isInsideResolved(nested, base)) {
+    throw new UnsafePathError(`--path must stay inside the source directory: ${subPath}`);
+  }
+  if (!isRealDirectory(nested)) {
     throw new NotFoundError(`Source subdirectory not found: ${subPath}`);
   }
+  assertNoSymlinksInTree(nested);
   return nested;
 }
 
@@ -57,12 +80,12 @@ function cloneGitSource(from: string, ref?: string): string {
   if (ref) {
     args.push('--branch', ref);
   }
-  args.push(from, tempDir);
+  args.push('--', from, tempDir);
   const result = spawnSync('git', args, { encoding: 'utf8' });
   if (result.status !== 0) {
     rmSync(tempDir, { recursive: true, force: true });
     const detail = (result.stderr || result.stdout || 'git clone failed').trim();
-    throw new InternalError(`Failed to clone template source: ${detail}`);
+    throw new UsageError(`Failed to clone template source: ${detail}`);
   }
   return tempDir;
 }
@@ -86,6 +109,10 @@ export async function addTemplate(options: TemplatesAddOptions): Promise<Templat
     throw new UsageError('Missing required flag: --from');
   }
 
+  if (options.from.startsWith('http://')) {
+    throw new UsageError('Insecure http:// git sources are not allowed. Use https:// or git@.');
+  }
+
   ensureGlobalConfig();
 
   const cwd = options.cwd ?? process.cwd();
@@ -95,7 +122,7 @@ export async function addTemplate(options: TemplatesAddOptions): Promise<Templat
 
   try {
     const absolutePath = resolve(cwd, options.from);
-    if (existsSync(absolutePath) && statSync(absolutePath).isDirectory()) {
+    if (isRealDirectory(absolutePath)) {
       sourceDir = resolveSourceDir(absolutePath, options.path);
       record = {
         type: 'path',

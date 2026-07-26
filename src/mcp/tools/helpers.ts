@@ -1,4 +1,4 @@
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { UsageError } from '../../core/errors';
 
 export function jsonResult(payload: unknown) {
@@ -9,6 +9,18 @@ export function jsonResult(payload: unknown) {
 
 export function normalizeCwd(cwd?: string): string {
   return resolve(cwd ?? process.cwd());
+}
+
+/**
+ * MCP replicate rejects absolute output paths (CLI still allows them).
+ * Combined with default force:true, absolute paths would otherwise overwrite anywhere.
+ */
+export function assertMcpReplicatePath(path: string | undefined): void {
+  if (path !== undefined && isAbsolute(path)) {
+    throw new UsageError(
+      'MCP replicate path must be relative (absolute paths are not allowed for agents)',
+    );
+  }
 }
 
 /** Resolve MCP replicate conflict flags (non-interactive; defaults to force). */

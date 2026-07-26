@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runTemplatesAdd } from '../../src/commands/templates/add';
@@ -63,12 +71,17 @@ describe('runTemplatesAdd', () => {
 
   it('copies without subdirectory path', async () => {
     const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
+    mkdirSync(join(source, 'nested', 'deep'), { recursive: true });
     writeFileSync(join(source, 'a.txt'), 'a', 'utf8');
+    writeFileSync(join(source, 'nested', 'deep', 'b.txt'), 'b', 'utf8');
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await runTemplatesAdd({ name: 'plain', from: source });
 
     expect(existsSync(join(getGlobalTemplatesDir(), 'plain', 'a.txt'))).toBe(true);
+    expect(existsSync(join(getGlobalTemplatesDir(), 'plain', 'nested', 'deep', 'b.txt'))).toBe(
+      true,
+    );
     rmSync(source, { recursive: true, force: true });
   });
 
@@ -168,19 +181,58 @@ describe('runTemplatesAdd', () => {
     });
   });
 
-  it('supports https github ssh and http git source detection', async () => {
+  it('supports https github and ssh git source detection', async () => {
     mockSuccessfulClone('x.txt', 'ok');
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await runTemplatesAdd({ name: 'https-tpl', from: 'https://github.com/org/repo.git' });
     await runTemplatesAdd({ name: 'gh-tpl', from: 'github:org/repo' });
     await runTemplatesAdd({ name: 'ssh-tpl', from: 'ssh://git@host/repo.git' });
-    await runTemplatesAdd({ name: 'http-tpl', from: 'http://example.com/repo.git' });
 
     expect(existsSync(join(getGlobalTemplatesDir(), 'https-tpl', 'x.txt'))).toBe(true);
     expect(existsSync(join(getGlobalTemplatesDir(), 'gh-tpl', 'x.txt'))).toBe(true);
     expect(existsSync(join(getGlobalTemplatesDir(), 'ssh-tpl', 'x.txt'))).toBe(true);
-    expect(existsSync(join(getGlobalTemplatesDir(), 'http-tpl', 'x.txt'))).toBe(true);
+  });
+
+  it('rejects insecure http:// git sources', async () => {
+    await expect(
+      runTemplatesAdd({ name: 'http-tpl', from: 'http://example.com/repo.git' }),
+    ).rejects.toThrow(/Insecure http:\/\//);
+  });
+
+  it('rejects --path that escapes via intermediate symlink', async () => {
+    const source = mkdtempSync(join(tmpdir(), 'smith-src-'));
+    const outside = mkdtempSync(join(tmpdir(), 'smith-out-'));
+    mkdirSync(join(outside, 'sub'), { recursive: true });
+    writeFileSync(join(outside, 'sub', 'x.txt'), 'x', 'utf8');
+    try {
+      symlinkSync(outside, join(source, 'vendor'));
+    } catch {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+      return;
+    }
+
+    await expect(
+      runTemplatesAdd({ name: 'via-link', from: source, path: 'vendor/sub' }),
+    ).rejects.toThrow(/--path must stay inside|symlink/);
+
+    rmSync(source, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  });
+
+  it('rejects sources that contain symlinks', async () => {
+    const source = mkdtempSync(join(tmpdir(), 'smith-src-symlink-'));
+    writeFileSync(join(source, 'ok.txt'), 'ok', 'utf8');
+    try {
+      symlinkSync(join(source, 'ok.txt'), join(source, 'link.txt'));
+    } catch {
+      rmSync(source, { recursive: true, force: true });
+      return;
+    }
+
+    await expect(runTemplatesAdd({ name: 'with-link', from: source })).rejects.toThrow(/symlink/);
+    rmSync(source, { recursive: true, force: true });
   });
 
   it('throws when git clone fails', async () => {

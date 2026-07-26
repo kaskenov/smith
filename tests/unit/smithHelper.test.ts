@@ -66,6 +66,24 @@ describe('createSmith', () => {
     expect(() => smith.template.read('link.txt')).toThrow(/refuses symlink/);
   });
 
+  it('rejects template reads through intermediate directory symlinks', () => {
+    const templateDir = join(root, 'tpl');
+    const outside = join(root, 'outside');
+    mkdirSync(templateDir, { recursive: true });
+    mkdirSync(outside, { recursive: true });
+    writeFileSync(join(outside, 'secret.txt'), 'secret');
+    try {
+      symlinkSync(outside, join(templateDir, 'vendor'));
+    } catch {
+      return;
+    }
+    const smith = createSmith(
+      { name: 'x', path: output, template: 't', cwd: root, root },
+      { templateDir, allowedRoots: [output] },
+    );
+    expect(() => smith.template.read('vendor/secret.txt')).toThrow(/escapes|symlink|must stay/);
+  });
+
   it('tracks fs writes and ensureDir via onWrite for rollback', () => {
     const tracked: Array<{ file: string; previous: string | null }> = [];
     const smith = createSmith(

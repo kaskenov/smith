@@ -67,4 +67,21 @@ describe('runInit / scaffold', () => {
     expect(existsSync(join(root, '.smith', 'templates', 'svc', 'a.txt'))).toBe(true);
     rmSync(root, { recursive: true, force: true });
   });
+
+  it('createTemplate rejects path collapse outside the template', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-scaffold-escape-'));
+    mkdirSync(join(root, '.smith', 'templates'), { recursive: true });
+    writeFileSync(join(root, '.smith', 'config.js'), 'module.exports = {};', 'utf8');
+
+    await expect(
+      createTemplate(root, 'svc', [{ path: '../../config.js', content: 'pwned' }]),
+    ).rejects.toThrow(/must stay inside templates\/svc/);
+
+    await expect(
+      createTemplate(root, 'svc', [{ path: '../other/x.txt', content: 'pwned' }]),
+    ).rejects.toThrow(/must stay inside templates\/svc/);
+
+    expect(readFileSync(join(root, '.smith', 'config.js'), 'utf8')).toBe('module.exports = {};');
+    rmSync(root, { recursive: true, force: true });
+  });
 });
