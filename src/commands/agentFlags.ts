@@ -1,8 +1,6 @@
 import type { InstallFlags } from '../install/types';
-
-function isHelpFlag(arg: string): boolean {
-  return arg === '-h' || arg === '--help';
-}
+import { UsageError } from '../core/errors';
+import { isHelpFlag } from './cliFlags';
 
 export function parseAgentFlags(args: string[]): InstallFlags {
   const flags: InstallFlags = {};
@@ -35,7 +33,7 @@ export function parseAgentFlags(args: string[]): InstallFlags {
         flags.dryRun = true;
         break;
       default:
-        throw new Error(`Unknown option: ${arg}`);
+        throw new UsageError(`Unknown option: ${arg}`);
     }
   }
 

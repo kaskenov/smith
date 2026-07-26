@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { listGlobalTemplates, listTemplatesWithSource } from '../core/globalTemplates';
+import { listGlobalTemplates, listTemplatesWithSource } from '../core/resolveTemplate';
 import { findSmithRoot } from '../core/resolveRoot';
 import { findNewerVersion } from '../package/registry';
 import { readPackageVersion } from '../package/version';

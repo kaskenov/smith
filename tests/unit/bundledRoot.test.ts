@@ -1,4 +1,4 @@
-import { getBundledDir } from '../../src/install/packageRoot';
+import { getBundledDir } from '../../src/install/bundledRoot';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 

@@ -10,6 +10,7 @@ async function importConfig(filePath: string): Promise<SmithConfigInput> {
   return requireConfig(filePath);
 }
 
+/** Loaded project config. Empty configs are data-only (no hooks). */
 export async function loadRootConfig(root: string | null): Promise<SmithConfig> {
   if (!root) return emptySmithConfig();
   const file = join(root, '.smith', 'config.js');

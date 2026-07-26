@@ -1,8 +1,8 @@
-import { ensureGlobalConfig } from '../../config/loadGlobalConfig';
+import { initTemplatesConfig } from '../../services/templates/initConfig';
 import { brandSmith } from '../../terminal/brand';
 
 export async function runTemplatesInitConfig(): Promise<{ path: string; created: boolean }> {
-  const result = ensureGlobalConfig();
+  const result = await initTemplatesConfig();
   if (result.created) {
     console.log(brandSmith(`smith templates init-config -> ${result.path}`));
   } else {

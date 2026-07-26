@@ -1,60 +1,29 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { existsSync, lstatSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { getGlobalTemplatesDir, listTemplateNamesInDir } from '../paths/globalSmithHome';
+import { NotFoundError, UnsafePathError, ValidationError } from './errors';
+import { isRealDirectory } from './fsGuard';
+import { readSources, writeSources } from './templateSources';
 
 export type TemplateSource = 'local' | 'global';
-
-export function listTemplateNamesInDir(templatesDir: string): string[] {
-  if (!existsSync(templatesDir)) return [];
-  return readdirSync(templatesDir)
-    .filter((entry) => {
-      const fullPath = join(templatesDir, entry);
-      return statSync(fullPath).isDirectory();
-    })
-    .sort();
-}
 
 export interface TemplateWithSource {
   name: string;
   source: TemplateSource;
 }
 
-export interface TemplateSourceRecord {
-  type: 'path' | 'git';
-  from: string;
-  ref?: string;
-  path?: string;
-  updatedAt: string;
-}
-
-export type TemplateSources = Record<string, TemplateSourceRecord>;
-
 export interface ResolvedTemplate {
   templateDir: string;
   source: TemplateSource;
 }
 
-export function getGlobalSmithDir(): string {
-  if (process.env.SMITH_HOME) {
-    return process.env.SMITH_HOME;
+/** Returns true for a real directory; throws if path exists as a symlink. */
+function acceptTemplateDir(dir: string): boolean {
+  if (!existsSync(dir)) return false;
+  if (lstatSync(dir).isSymbolicLink()) {
+    throw new UnsafePathError(`Template directory is a symlink (not allowed): ${dir}`);
   }
-  return join(homedir(), '.smith');
-}
-
-export function getGlobalTemplatesDir(): string {
-  return join(getGlobalSmithDir(), 'templates');
-}
-
-export function getGlobalConfigPath(): string {
-  return join(getGlobalSmithDir(), 'config.js');
-}
-
-export function getGlobalSourcesPath(): string {
-  return join(getGlobalSmithDir(), 'sources.json');
-}
-
-export function ensureGlobalSmithDir(): void {
-  mkdirSync(getGlobalTemplatesDir(), { recursive: true });
+  return isRealDirectory(dir);
 }
 
 export function listLocalTemplates(smithRoot: string | null): string[] {
@@ -88,35 +57,19 @@ export function listAvailableTemplateNames(smithRoot: string | null): string[] {
 export function resolveTemplateDir(smithRoot: string | null, template: string): ResolvedTemplate {
   if (smithRoot) {
     const localDir = join(smithRoot, '.smith', 'templates', template);
-    if (existsSync(localDir) && statSync(localDir).isDirectory()) {
+    if (acceptTemplateDir(localDir)) {
       return { templateDir: localDir, source: 'local' };
     }
   }
 
   const globalDir = join(getGlobalTemplatesDir(), template);
-  if (existsSync(globalDir) && statSync(globalDir).isDirectory()) {
+  if (acceptTemplateDir(globalDir)) {
     return { templateDir: globalDir, source: 'global' };
   }
 
   const available = listAvailableTemplateNames(smithRoot);
   const list = available.length > 0 ? available.join(', ') : '(none)';
-  throw new Error(`Template not found: ${template}. Available templates: ${list}`);
-}
-
-export function readSources(): TemplateSources {
-  const file = getGlobalSourcesPath();
-  if (!existsSync(file)) return {};
-  try {
-    const parsed = JSON.parse(readFileSync(file, 'utf8')) as TemplateSources;
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-export function writeSources(sources: TemplateSources): void {
-  ensureGlobalSmithDir();
-  writeFileSync(getGlobalSourcesPath(), `${JSON.stringify(sources, null, 2)}\n`, 'utf8');
+  throw new NotFoundError(`Template not found: ${template}. Available templates: ${list}`);
 }
 
 export function removeGlobalTemplate(name: string): boolean {
@@ -138,6 +91,6 @@ export function removeGlobalTemplate(name: string): boolean {
 
 export function assertValidTemplateName(name: string): void {
   if (!name || name.includes('/') || name.includes('\\') || name === '.' || name === '..') {
-    throw new Error(`Invalid template name: ${name}`);
+    throw new ValidationError(`Invalid template name: ${name}`);
   }
 }

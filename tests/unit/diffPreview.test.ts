@@ -33,4 +33,16 @@ describe('diffPreview', () => {
     expect(preview).toContain('... (45 more lines)');
     expect(preview).toContain('... (');
   });
+
+  it('includes trailing removals when existing is longer', () => {
+    const preview = formatConflictPreview('/tmp/extra.txt', 'shared\nonly-old-1\nonly-old-2', 'shared');
+    expect(preview).toContain('-only-old-1');
+    expect(preview).toContain('-only-old-2');
+  });
+
+  it('includes trailing additions when incoming is longer', () => {
+    const preview = formatConflictPreview('/tmp/extra.txt', 'shared', 'shared\nonly-new-1\nonly-new-2');
+    expect(preview).toContain('+only-new-1');
+    expect(preview).toContain('+only-new-2');
+  });
 });

@@ -56,7 +56,7 @@ describe('cli smoke', () => {
         encoding: 'utf8',
         env: { ...process.env, SMITH_SKIP_UPDATE_CHECK: '1' },
       });
-      expect(out.trim()).toBe('component');
+      expect(out.trim()).toBe('component (local)');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

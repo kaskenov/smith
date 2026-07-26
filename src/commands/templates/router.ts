@@ -1,3 +1,5 @@
+import { assertKnownFlags, isHelpFlag, hasFlag, readFlag, reportCliError } from '../cliFlags';
+import { UsageError } from '../../core/errors';
 import { printTemplatesHelp } from './help';
 import { runTemplatesAdd } from './add';
 import { runTemplatesInitConfig } from './initConfig';
@@ -5,20 +7,16 @@ import { runTemplatesList } from './list';
 import { runTemplatesRemove } from './remove';
 import { runTemplatesUpdate } from './update';
 
-const SUBCOMMANDS = new Set(['list', 'add', 'remove', 'update', 'init-config']);
+type TemplatesSubcommand = 'list' | 'add' | 'remove' | 'update' | 'init-config';
 
-function isHelpFlag(arg: string): boolean {
-  return arg === '-h' || arg === '--help';
-}
-
-function readFlag(args: string[], name: string): string | undefined {
-  const index = args.indexOf(name);
-  if (index === -1) return undefined;
-  return args[index + 1];
-}
-
-function hasFlag(args: string[], name: string): boolean {
-  return args.includes(name);
+function isTemplatesSubcommand(value: string): value is TemplatesSubcommand {
+  return (
+    value === 'list' ||
+    value === 'add' ||
+    value === 'remove' ||
+    value === 'update' ||
+    value === 'init-config'
+  );
 }
 
 function positionalArgs(args: string[]): string[] {
@@ -30,15 +28,59 @@ function positionalArgs(args: string[]): string[] {
       i += 1;
       continue;
     }
-    if (isHelpFlag(arg)) continue;
     result.push(arg);
   }
   return result;
 }
 
+async function dispatchTemplates(cmd: TemplatesSubcommand, after: string[]): Promise<void> {
+  if (cmd === 'list') {
+    runTemplatesList();
+    return;
+  }
+  if (cmd === 'init-config') {
+    await runTemplatesInitConfig();
+    return;
+  }
+  if (cmd === 'add') {
+    assertKnownFlags(after, {
+      valueFlags: ['--from', '--path', '--ref'],
+      boolFlags: ['--force'],
+    });
+    const [name] = positionalArgs(after);
+    const from = readFlag(after, '--from');
+    if (!name || !from) {
+      throw new UsageError(
+        'Usage: smith templates add <name> --from <path|git> [--path <sub>] [--ref <ref>] [--force]',
+      );
+    }
+    await runTemplatesAdd({
+      name,
+      from,
+      path: readFlag(after, '--path'),
+      ref: readFlag(after, '--ref'),
+      force: hasFlag(after, '--force'),
+    });
+    return;
+  }
+  if (cmd === 'remove') {
+    assertKnownFlags(after, { valueFlags: [], boolFlags: [] });
+    const [name] = positionalArgs(after);
+    if (!name) {
+      throw new UsageError('Usage: smith templates remove <name>');
+    }
+    await runTemplatesRemove(name);
+    return;
+  }
+
+  assertKnownFlags(after, { valueFlags: [], boolFlags: [] });
+  const [name] = positionalArgs(after);
+  await runTemplatesUpdate(name);
+}
+
 async function routeTemplates(argv: string[]): Promise<void> {
   if (argv[0] !== 'templates' && argv[0] !== 't') {
-    throw new Error('Expected templates command');
+    throw new UsageError('Expected templates command');
   }
 
   const rest = argv.slice(1);
@@ -49,8 +91,8 @@ async function routeTemplates(argv: string[]): Promise<void> {
   }
 
   const subcommand = rest[0]!;
-  if (!SUBCOMMANDS.has(subcommand)) {
-    throw new Error(`Unknown templates subcommand: ${subcommand}`);
+  if (!isTemplatesSubcommand(subcommand)) {
+    throw new UsageError(`Unknown templates subcommand: ${subcommand}`);
   }
 
   const after = rest.slice(1);
@@ -59,52 +101,13 @@ async function routeTemplates(argv: string[]): Promise<void> {
     return;
   }
 
-  switch (subcommand) {
-    case 'list':
-      runTemplatesList();
-      return;
-    case 'init-config':
-      await runTemplatesInitConfig();
-      return;
-    case 'add': {
-      const [name] = positionalArgs(after);
-      const from = readFlag(after, '--from');
-      if (!name || !from) {
-        throw new Error('Usage: smith templates add <name> --from <path|git> [--path <sub>] [--ref <ref>] [--force]');
-      }
-      await runTemplatesAdd({
-        name,
-        from,
-        path: readFlag(after, '--path'),
-        ref: readFlag(after, '--ref'),
-        force: hasFlag(after, '--force'),
-      });
-      return;
-    }
-    case 'remove': {
-      const [name] = positionalArgs(after);
-      if (!name) {
-        throw new Error('Usage: smith templates remove <name>');
-      }
-      await runTemplatesRemove(name);
-      return;
-    }
-    case 'update': {
-      const [name] = positionalArgs(after);
-      await runTemplatesUpdate(name);
-      return;
-    }
-    default:
-      throw new Error(`Unknown templates subcommand: ${subcommand}`);
-  }
+  await dispatchTemplates(subcommand, after);
 }
 
 export async function runTemplates(argv: string[]): Promise<void> {
   try {
     await routeTemplates(argv);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
-    process.exitCode = 1;
+    reportCliError(error);
   }
 }

@@ -1,13 +1,13 @@
 import { refreshInstalledSmithTooling } from '../../src/install/refreshInstalled';
-import { runInstallMcp } from '../../src/commands/install/mcp';
-import { runInstallSkills } from '../../src/commands/install/skills';
+import { installMcp } from '../../src/install/installMcp';
+import { installSkills } from '../../src/install/installSkills';
 
-jest.mock('../../src/commands/install/mcp', () => ({
-  runInstallMcp: jest.fn().mockResolvedValue(undefined),
+jest.mock('../../src/install/installMcp', () => ({
+  installMcp: jest.fn().mockResolvedValue([]),
 }));
 
-jest.mock('../../src/commands/install/skills', () => ({
-  runInstallSkills: jest.fn().mockResolvedValue(undefined),
+jest.mock('../../src/install/installSkills', () => ({
+  installSkills: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../../src/install/paths', () => ({
@@ -29,17 +29,26 @@ jest.mock('node:fs', () => ({
 }));
 
 describe('refreshInstalledSmithTooling', () => {
-  const runInstallMcpMock = runInstallMcp as jest.MockedFunction<typeof runInstallMcp>;
-  const runInstallSkillsMock = runInstallSkills as jest.MockedFunction<typeof runInstallSkills>;
+  const installMcpMock = installMcp as jest.MockedFunction<typeof installMcp>;
+  const installSkillsMock = installSkills as jest.MockedFunction<typeof installSkills>;
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
+  it('uses process.cwd when cwd is omitted', async () => {
+    const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue('/tmp/default-cwd');
+    await refreshInstalledSmithTooling();
+    expect(installMcpMock).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/tmp/default-cwd' }),
+    );
+    cwdSpy.mockRestore();
+  });
+
   it('refreshes only installed MCP and skill locations', async () => {
     await refreshInstalledSmithTooling('/tmp/project');
 
-    expect(runInstallMcpMock).toHaveBeenCalledWith({
+    expect(installMcpMock).toHaveBeenCalledWith({
       local: true,
       cursor: true,
       claude: false,
@@ -47,7 +56,7 @@ describe('refreshInstalledSmithTooling', () => {
       force: true,
       cwd: '/tmp/project',
     });
-    expect(runInstallSkillsMock).toHaveBeenCalledWith({
+    expect(installSkillsMock).toHaveBeenCalledWith({
       local: true,
       cursor: true,
       claude: false,
@@ -73,7 +82,7 @@ describe('refreshInstalledSmithTooling', () => {
 
     await refreshInstalledSmithTooling('/tmp/project');
 
-    expect(runInstallMcpMock).toHaveBeenCalledWith({
+    expect(installMcpMock).toHaveBeenCalledWith({
       global: true,
       cursor: false,
       claude: false,
@@ -81,7 +90,7 @@ describe('refreshInstalledSmithTooling', () => {
       force: true,
       cwd: '/tmp/project',
     });
-    expect(runInstallSkillsMock).toHaveBeenCalledWith({
+    expect(installSkillsMock).toHaveBeenCalledWith({
       global: true,
       cursor: false,
       claude: false,

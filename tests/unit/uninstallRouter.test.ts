@@ -1,6 +1,7 @@
 import { runUninstall } from '../../src/commands/uninstall/router';
 import * as uninstallModule from '../../src/commands/uninstall/run';
 import * as helpModule from '../../src/commands/uninstall/help';
+import * as installListModule from '../../src/commands/install/list';
 
 describe('runUninstall router', () => {
   afterEach(() => {
@@ -23,6 +24,14 @@ describe('runUninstall router', () => {
     await runUninstall(['uninstall', 'skills', '--force']);
 
     expect(uninstallSpy).toHaveBeenCalledWith({ force: true });
+  });
+
+  it('routes uninstall list to runInstallList', async () => {
+    const listSpy = jest.spyOn(installListModule, 'runInstallList').mockResolvedValue(undefined);
+
+    await runUninstall(['uninstall', 'list', '--cursor', '--local']);
+
+    expect(listSpy).toHaveBeenCalledWith({ cursor: true, local: true });
   });
 
   it('prints uninstall help for uninstall --help', async () => {
@@ -51,6 +60,14 @@ describe('runUninstall router', () => {
     expect(errorSpy).toHaveBeenCalledWith('Expected uninstall command');
     expect(process.exitCode).toBe(1);
     process.exitCode = 0;
+  });
+
+  it('prints uninstall help for uninstall list --help', async () => {
+    const helpSpy = jest.spyOn(helpModule, 'printUninstallHelp').mockImplementation(() => undefined);
+
+    await runUninstall(['uninstall', 'list', '--help']);
+
+    expect(helpSpy).toHaveBeenCalled();
   });
 
   it('prints uninstall mcp help for uninstall mcp --help', async () => {

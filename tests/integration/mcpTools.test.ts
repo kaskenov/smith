@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -199,6 +199,105 @@ describe('mcp tools integration', () => {
     }
   });
 
+  it('rejects smith_read_file through symlinks that escape .smith', async () => {
+    const fixtureRoot = join(__dirname, '../fixtures/basic-project');
+    const root = makeTmpRoot('smith-mcp-symlink-escape-');
+    cpSync(fixtureRoot, root, { recursive: true });
+    patchConfigRequires(root);
+
+    const secret = join(root, 'secret.txt');
+    writeFileSync(secret, 'host-secret', 'utf8');
+    try {
+      symlinkSync(secret, join(root, '.smith', 'escape.txt'));
+    } catch {
+      return;
+    }
+
+    const { client, server } = await createPair();
+
+    try {
+      const result = await client.callTool({
+        name: 'smith_read_file',
+        arguments: { cwd: root, path: 'escape.txt' },
+      });
+      expect(result).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [expect.objectContaining({ text: expect.stringMatching(/symlink/) })],
+        }),
+      );
+    } finally {
+      await cleanupPair(server, client);
+    }
+  });
+
+  it('rejects smith_read_file when path is a directory', async () => {
+    const fixtureRoot = join(__dirname, '../fixtures/basic-project');
+    const root = makeTmpRoot('smith-mcp-read-dir-');
+    cpSync(fixtureRoot, root, { recursive: true });
+    patchConfigRequires(root);
+
+    const { client, server } = await createPair();
+
+    try {
+      const result = await client.callTool({
+        name: 'smith_read_file',
+        arguments: { cwd: root, path: 'templates' },
+      });
+      expect(result).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [expect.objectContaining({ text: 'File not found: templates' })],
+        }),
+      );
+    } finally {
+      await cleanupPair(server, client);
+    }
+  });
+
+  it('rejects listing a template that contains a symlink', async () => {
+    const fixtureRoot = join(__dirname, '../fixtures/basic-project');
+    const root = makeTmpRoot('smith-mcp-tpl-symlink-');
+    cpSync(fixtureRoot, root, { recursive: true });
+    patchConfigRequires(root);
+
+    const secret = join(root, 'secret.txt');
+    writeFileSync(secret, 'host-secret', 'utf8');
+    try {
+      symlinkSync(secret, join(root, '.smith', 'templates', 'component', 'link.txt'));
+    } catch {
+      return;
+    }
+
+    const { client, server } = await createPair();
+
+    try {
+      const listed = await client.callTool({
+        name: 'smith_list_templates',
+        arguments: { cwd: root, template: 'component' },
+      });
+      expect(listed).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [expect.objectContaining({ text: expect.stringMatching(/symlink/) })],
+        }),
+      );
+
+      const tree = await client.callTool({
+        name: 'smith_list_templates',
+        arguments: { cwd: root, template: 'component', includeTree: true },
+      });
+      expect(tree).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [expect.objectContaining({ text: expect.stringMatching(/symlink/) })],
+        }),
+      );
+    } finally {
+      await cleanupPair(server, client);
+    }
+  });
+
   it('validates root config without a template name', async () => {
     const fixtureRoot = join(__dirname, '../fixtures/basic-project');
     const root = makeTmpRoot('smith-mcp-validate-root-');
@@ -367,6 +466,8 @@ describe('mcp tools integration', () => {
     const { client, server } = await createPair();
 
     try {
+      jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
       const info = parseToolJson(
         await client.callTool({
           name: 'smith_project_info',
@@ -559,6 +660,8 @@ describe('mcp tools integration', () => {
     const { client, server } = await createPair();
 
     try {
+      jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
       const replicate = parseToolJson(
         await client.callTool({
           name: 'smith_replicate',
@@ -573,6 +676,19 @@ describe('mcp tools integration', () => {
       expect(replicate.force).toBe(true);
       expect(replicate.skip).toBe(false);
       expect(replicate.path).toBeNull();
+
+      const defaulted = parseToolJson(
+        await client.callTool({
+          name: 'smith_replicate',
+          arguments: {
+            cwd: root,
+            name: 'Defaulted',
+            template: 'component',
+          },
+        }),
+      );
+      expect(defaulted.force).toBe(true);
+      expect(defaulted.skip).toBe(false);
     } finally {
       await cleanupPair(server, client);
     }
@@ -595,6 +711,161 @@ describe('mcp tools integration', () => {
       expect(existsSync(join(root, '.smith', 'config.js'))).toBe(true);
     } finally {
       process.chdir(previousCwd);
+      await cleanupPair(server, client);
+    }
+  });
+
+  it('supports global template MCP tools', async () => {
+    const source = makeTmpRoot('smith-mcp-tpl-src-');
+    writeFileSync(join(source, '{{name}}.txt'), 'Hello {{name}}', 'utf8');
+    const work = makeTmpRoot('smith-mcp-tpl-work-');
+    const { client, server } = await createPair();
+
+    try {
+      jest.spyOn(console, 'log').mockImplementation(() => undefined);
+
+      const initConfig = parseToolJson(
+        await client.callTool({
+          name: 'smith_templates_init_config',
+          arguments: { cwd: work },
+        }),
+      );
+      expect(initConfig.ok).toBe(true);
+      expect(initConfig.created).toBe(true);
+
+      const add = parseToolJson(
+        await client.callTool({
+          name: 'smith_templates_add',
+          arguments: {
+            cwd: work,
+            name: 'frontend-app',
+            from: source,
+          },
+        }),
+      );
+      expect(add.ok).toBe(true);
+      expect(add.name).toBe('frontend-app');
+
+      const update = parseToolJson(
+        await client.callTool({
+          name: 'smith_templates_update',
+          arguments: { cwd: work, name: 'frontend-app' },
+        }),
+      );
+      expect(update.ok).toBe(true);
+
+      const updateAll = parseToolJson(
+        await client.callTool({
+          name: 'smith_templates_update',
+          arguments: { cwd: work },
+        }),
+      );
+      expect(updateAll.ok).toBe(true);
+      expect(updateAll.name).toBeNull();
+
+      const remove = parseToolJson(
+        await client.callTool({
+          name: 'smith_templates_remove',
+          arguments: { cwd: work, name: 'frontend-app' },
+        }),
+      );
+      expect(remove.ok).toBe(true);
+
+      const previousCwd = process.cwd();
+      process.chdir(work);
+      try {
+        const initDefaultCwd = parseToolJson(
+          await client.callTool({
+            name: 'smith_templates_init_config',
+            arguments: {},
+          }),
+        );
+        expect(initDefaultCwd.ok).toBe(true);
+        expect(initDefaultCwd.created).toBe(false);
+      } finally {
+        process.chdir(previousCwd);
+      }
+    } finally {
+      await cleanupPair(server, client);
+    }
+  });
+
+  it('validates global-only when project root is missing', async () => {
+    const work = makeTmpRoot('smith-mcp-global-only-');
+    const { getGlobalTemplatesDir } = await import('../../src/paths/globalSmithHome');
+    mkdirSync(join(getGlobalTemplatesDir(), 'frontend-app'), { recursive: true });
+    writeFileSync(
+      join(getGlobalTemplatesDir(), 'frontend-app', 'config.js'),
+      `module.exports = { placeholder: ['{{', '}}'], variables: {} };`,
+      'utf8',
+    );
+    const { client, server } = await createPair();
+
+    try {
+      const validate = parseToolJson(
+        await client.callTool({
+          name: 'smith_validate',
+          arguments: { cwd: work },
+        }),
+      );
+      expect(validate).toEqual(
+        expect.objectContaining({
+          ok: true,
+          root: null,
+          validated: ['global'],
+        }),
+      );
+
+      const validateTemplate = parseToolJson(
+        await client.callTool({
+          name: 'smith_validate',
+          arguments: { cwd: work, template: 'frontend-app' },
+        }),
+      );
+      expect(validateTemplate).toEqual(
+        expect.objectContaining({
+          ok: true,
+          root: null,
+          source: 'global',
+          validated: ['global', 'template'],
+        }),
+      );
+    } finally {
+      await cleanupPair(server, client);
+    }
+  });
+
+  it('returns error when global config presets are invalid', async () => {
+    const { getGlobalConfigPath } = await import('../../src/paths/globalSmithHome');
+    writeFileSync(
+      getGlobalConfigPath(),
+      `module.exports = {
+  placeholder: ['{{', '}}'],
+  variables: {},
+  defaultPreset: 'missing',
+  presets: { core: { include: ['*'] } },
+};`,
+      'utf8',
+    );
+    const work = makeTmpRoot('smith-mcp-bad-global-');
+    const { client, server } = await createPair();
+
+    try {
+      const result = await client.callTool({
+        name: 'smith_validate',
+        arguments: { cwd: work },
+      });
+      expect(result).toEqual(
+        expect.objectContaining({
+          isError: true,
+          content: [
+            expect.objectContaining({
+              text: expect.stringContaining('defaultPreset "missing"'),
+            }),
+          ],
+        }),
+      );
+    } finally {
       await cleanupPair(server, client);
     }
   });

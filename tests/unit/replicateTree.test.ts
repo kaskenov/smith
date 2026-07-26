@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import * as conflictsModule from '../../src/core/conflicts';
+import { resolveConflictByPolicy } from '../../src/core/conflicts';
 import { replicateTree } from '../../src/core/replicateTree';
+import type { ConflictResolver } from '../../src/types';
 
 describe('replicateTree', () => {
   it('replicates with renamed file and substituted content', async () => {
@@ -15,6 +16,7 @@ describe('replicateTree', () => {
       vars: { name: 'Button', NAME: 'Button' },
       delimiters: ['{{', '}}'],
       policy: 'force',
+      resolveConflict: resolveConflictByPolicy,
     });
     const outFile = join(outputRoot, 'Button.txt');
     expect(result.written).toContain(outFile);
@@ -36,6 +38,7 @@ describe('replicateTree', () => {
         vars: { name: '../outside' },
         delimiters: ['{{', '}}'],
         policy: 'force',
+        resolveConflict: resolveConflictByPolicy,
       }),
     ).rejects.toThrow('Unsafe output path escapes output root');
 
@@ -58,6 +61,7 @@ describe('replicateTree', () => {
       vars: { name: 'Button' },
       delimiters: ['{{', '}}'],
       policy: 'force',
+      resolveConflict: resolveConflictByPolicy,
     });
 
     expect(existsSync(join(outputRoot, 'config.js'))).toBe(false);
@@ -75,14 +79,13 @@ describe('replicateTree', () => {
     writeFileSync(join(templateDir, '{{name}}.txt'), 'Hello {{name}}', 'utf8');
     writeFileSync(join(outputRoot, 'Button.txt'), 'keep me', 'utf8');
 
-    jest.spyOn(conflictsModule, 'resolveConflict').mockResolvedValue({ action: 'skip' });
-
     const result = await replicateTree({
       templateDir,
       outputRoot,
       vars: { name: 'Button' },
       delimiters: ['{{', '}}'],
       policy: 'skip',
+      resolveConflict: resolveConflictByPolicy,
     });
 
     expect(result.skipped).toContain(join(outputRoot, 'Button.txt'));
@@ -90,7 +93,7 @@ describe('replicateTree', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('writes merged content when policy is prompt and merge is chosen', async () => {
+  it('writes merged content when merge resolver is used', async () => {
     const root = mkdtempSync(join(tmpdir(), 'smith-tree-merge-'));
     const templateDir = join(root, 'template');
     const outputRoot = join(root, 'out');
@@ -99,7 +102,7 @@ describe('replicateTree', () => {
     writeFileSync(join(templateDir, '{{name}}.txt'), 'Hello {{name}}', 'utf8');
     writeFileSync(join(outputRoot, 'Button.txt'), 'keep me', 'utf8');
 
-    jest.spyOn(conflictsModule, 'resolveConflict').mockResolvedValue({
+    const mergeResolver: ConflictResolver = async () => ({
       action: 'merge',
       content: 'merged content',
     });
@@ -110,6 +113,7 @@ describe('replicateTree', () => {
       vars: { name: 'Button' },
       delimiters: ['{{', '}}'],
       policy: 'prompt',
+      resolveConflict: mergeResolver,
     });
 
     expect(result.written).toContain(join(outputRoot, 'Button.txt'));
@@ -132,6 +136,7 @@ describe('replicateTree', () => {
       vars: { name: 'Button' },
       delimiters: ['{{', '}}'],
       policy: 'force',
+      resolveConflict: resolveConflictByPolicy,
       include: ['{{name}}.vue', '{{name}}.types.ts'],
     });
 
@@ -143,6 +148,33 @@ describe('replicateTree', () => {
       ]),
     );
     expect(existsSync(join(outputRoot, 'Button.spec.ts'))).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('rejects symlinks inside templates', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'smith-tree-symlink-'));
+    const templateDir = join(root, 'template');
+    const outputRoot = join(root, 'out');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(root, 'outside.txt'), 'secret', 'utf8');
+    try {
+      symlinkSync(join(root, 'outside.txt'), join(templateDir, 'linked.txt'));
+    } catch {
+      rmSync(root, { recursive: true, force: true });
+      return;
+    }
+
+    await expect(
+      replicateTree({
+        templateDir,
+        outputRoot,
+        vars: { name: 'Button' },
+        delimiters: ['{{', '}}'],
+        policy: 'force',
+        resolveConflict: resolveConflictByPolicy,
+      }),
+    ).rejects.toThrow(/symlink/);
+
     rmSync(root, { recursive: true, force: true });
   });
 });

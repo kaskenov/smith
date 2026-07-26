@@ -1,5 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { UsageError } from '../core/errors';
 import type { InstallAgent, InstallScope, InstallFlags } from './types';
 
 const AGENT_DIRS: Record<InstallAgent, string> = {
@@ -10,7 +11,7 @@ const AGENT_DIRS: Record<InstallAgent, string> = {
 
 export function resolveScope(flags: InstallFlags): InstallScope {
   if (flags.global && flags.local) {
-    throw new Error('Use either --global or --local, not both.');
+    throw new UsageError('Use either --global or --local, not both.');
   }
   if (flags.global) return 'global';
   return 'local';

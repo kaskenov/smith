@@ -12,7 +12,7 @@ import { join } from 'node:path';
 
 import { SMITH_SKILL_NAMES } from '../../src/install/constants';
 import { copyBundledSkills } from '../../src/install/copySkills';
-import * as packageRoot from '../../src/install/packageRoot';
+import * as packageRoot from '../../src/install/bundledRoot';
 
 describe('copyBundledSkills', () => {
   let bundledDir: string;
@@ -55,7 +55,9 @@ describe('copyBundledSkills', () => {
     copyBundledSkills({ targetRoot });
     const existingPath = join(targetRoot, SMITH_SKILL_NAMES[0]);
 
-    expect(() => copyBundledSkills({ targetRoot })).toThrow(existingPath);
+    expect(() => copyBundledSkills({ targetRoot })).toThrow(
+      `Skill already installed at ${existingPath}. Use --force to overwrite.`,
+    );
   });
 
   it('overwrites existing destinations when force is true', () => {

@@ -10,11 +10,11 @@ export function printGlobalDocs(): void {
   console.log('Documentation:');
   console.log('');
   printDocSection('Project setup', [
-    'Create .smith/ at the project root:',
+    'Create .smith/ at the project root (or run smith init):',
     '  .smith/config.js',
     '  .smith/templates/<template>/...',
     '',
-    'Root config uses createSmithConfig for shared variables, placeholders, and hooks.',
+    'Root config uses createSmithConfig (@kaskenov/smith/config) for shared variables, placeholders, and hooks.',
     'Template folders can add config.js to override rootDir, variables, and local hooks.',
   ]);
   printDocSection('Global templates', [
@@ -62,6 +62,7 @@ export function printGlobalDocs(): void {
   printDocSection('Uninstall', [
     'smith uninstall mcp [--local|--global] [--cursor|--claude|--qwen] [--dry-run]',
     'smith uninstall skills ...',
+    'smith uninstall list ...',
     '',
     'Removes smith MCP config or agent skills from selected agents and scope.',
     'See: smith uninstall --help',
@@ -238,6 +239,7 @@ export function printUninstallDocs(): void {
   printDocSection('Subcommands', [
     'mcp      Remove smith MCP server entry from agent config',
     'skills   Remove smith skill directories',
+    'list     Show installed MCP/skills status (same as install list)',
   ]);
   printDocSection('Flags', [
     '--cursor --claude --qwen   Target one agent (default: all)',

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runList } from '../../src/commands/list';
-import { getGlobalTemplatesDir } from '../../src/core/globalTemplates';
+import { getGlobalTemplatesDir } from '../../src/paths/globalSmithHome';
 
 describe('runList', () => {
   let originalCwd: string;

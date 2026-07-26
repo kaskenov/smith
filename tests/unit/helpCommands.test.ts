@@ -11,6 +11,7 @@ import {
   printListHelp,
   printReplicateDocs,
   printReplicateHelp,
+  printTemplatesDocs,
   printUninstallDocs,
   printUninstallHelp,
   printUninstallMcpDocs,
@@ -18,6 +19,7 @@ import {
   printUninstallSkillsDocs,
   printUninstallSkillsHelp,
 } from '../../src/commands/help';
+import { printTemplatesHelp } from '../../src/commands/templates/help';
 
 describe('help commands', () => {
   let logs: string[];
@@ -40,8 +42,10 @@ describe('help commands', () => {
     expect(output).toContain('Never Send A Human To Do A Machine');
     expect(output).toContain('Documentation:');
     expect(output).toContain('smith list');
+    expect(output).toContain('  init');
     expect(output).toContain('templates, t');
     expect(output).toContain('Project setup');
+    expect(output).toContain('smith init');
     expect(output).toContain('Global templates');
     expect(output).not.toContain('Examples:');
   });
@@ -65,6 +69,17 @@ describe('help commands', () => {
     expect(output).toContain('Documentation:');
     expect(output).toContain('smith install list');
     expect(output).not.toContain('Examples:');
+  });
+
+  it('prints templates help and docs', () => {
+    printTemplatesHelp();
+    printTemplatesDocs();
+
+    const output = logs.join('\n');
+    expect(output).toContain('smith templates — global template store');
+    expect(output).toContain('smith templates add');
+    expect(output).toContain('init-config');
+    expect(output).toContain('Manages the user-global template store');
   });
 
   it('prints install help with documentation', () => {

@@ -1,33 +1,11 @@
-import { resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { loadRootConfig, loadTemplateConfig } from '../../config/loadConfig';
-import { loadGlobalConfig } from '../../config/loadGlobalConfig';
-import { mergeConfigLayers } from '../../config/mergeConfig';
-import { validatePresets } from '../../config/validatePresets';
-import { runReplicate } from '../../commands/replicate';
-import { getGlobalSmithDir, resolveTemplateDir } from '../../core/globalTemplates';
+import { getGlobalSmithDir } from '../../paths/globalSmithHome';
+import { resolveTemplateDir } from '../../core/resolveTemplate';
 import { findSmithRoot } from '../../core/resolveRoot';
-
-function jsonResult(payload: unknown) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
-  };
-}
-
-function normalizeCwd(cwd?: string): string {
-  return resolve(cwd ?? process.cwd());
-}
-
-async function withCwd<T>(cwd: string, fn: () => Promise<T>): Promise<T> {
-  const previous = process.cwd();
-  process.chdir(cwd);
-  try {
-    return await fn();
-  } finally {
-    process.chdir(previous);
-  }
-}
+import { replicate } from '../../services/replicate';
+import { validateSmith } from '../../services/validate';
+import { jsonResult, normalizeCwd, resolveMcpReplicateFlags } from './helpers';
 
 export function registerActionTools(server: McpServer): void {
   server.registerTool(
@@ -41,46 +19,11 @@ export function registerActionTools(server: McpServer): void {
       },
     },
     async ({ cwd, template }) => {
-      const runCwd = normalizeCwd(cwd);
-      const root = findSmithRoot(runCwd);
-      const globalConfig = await loadGlobalConfig();
-      const projectConfig = await loadRootConfig(root);
-
-      const globalErrors = validatePresets(globalConfig.presets, globalConfig.defaultPreset);
-      if (globalErrors.length > 0) {
-        throw new Error(globalErrors.join('\n'));
-      }
-
-      const projectErrors = validatePresets(projectConfig.presets, projectConfig.defaultPreset);
-      if (projectErrors.length > 0) {
-        throw new Error(projectErrors.join('\n'));
-      }
-
-      if (!template) {
-        return jsonResult({
-          ok: true,
-          root,
-          globalSmithDir: getGlobalSmithDir(),
-          validated: root ? ['global', 'root'] : ['global'],
-        });
-      }
-
-      const { templateDir, source } = resolveTemplateDir(root, template);
-      const templateConfig = await loadTemplateConfig(templateDir);
-      const merged = mergeConfigLayers(globalConfig, projectConfig, templateConfig);
-      const mergedErrors = validatePresets(merged.presets, merged.defaultPreset);
-      if (mergedErrors.length > 0) {
-        throw new Error(mergedErrors.join('\n'));
-      }
-
-      return jsonResult({
-        ok: true,
-        root,
-        globalSmithDir: getGlobalSmithDir(),
+      const result = await validateSmith({
+        cwd: normalizeCwd(cwd),
         template,
-        source,
-        validated: root ? ['global', 'root', 'template'] : ['global', 'template'],
       });
+      return jsonResult(result);
     },
   );
 
@@ -88,7 +31,7 @@ export function registerActionTools(server: McpServer): void {
     'smith_replicate',
     {
       description:
-        'Generate files from a local or global smith template. Required: name, template. Optional: path, preset, force, skip. Resolves project templates first, then ~/.smith/templates. Works without a project .smith when using a global template. Config merge: global → project → template. Hooks: global before → project before → template before → replicate → afters reverse.',
+        'Generate files from a local or global smith template. Required: name, template. Optional: path, preset, force, skip. When neither force nor skip is set, force defaults to true (MCP is non-interactive). Resolves project templates first, then ~/.smith/templates. Config merge: global → project → template.',
       inputSchema: {
         cwd: z.string().optional(),
         name: z.string(),
@@ -100,12 +43,20 @@ export function registerActionTools(server: McpServer): void {
       },
     },
     async ({ cwd, name, template, path, preset, force, skip }) => {
+      const { force: resolvedForce, skip: resolvedSkip } = resolveMcpReplicateFlags(force, skip);
+
       const runCwd = normalizeCwd(cwd);
       const root = findSmithRoot(runCwd);
       const { source } = resolveTemplateDir(root, template);
 
-      await withCwd(runCwd, async () => {
-        await runReplicate({ name, template, path, preset, force, skip });
+      const result = await replicate({
+        cwd: runCwd,
+        name,
+        template,
+        path,
+        preset,
+        force: resolvedForce,
+        skip: resolvedSkip,
       });
 
       return jsonResult({
@@ -116,9 +67,13 @@ export function registerActionTools(server: McpServer): void {
         template,
         source,
         path: path ?? null,
+        outputPath: result.outputPath,
         preset: preset ?? null,
-        force: force ?? false,
-        skip: skip ?? false,
+        force: resolvedForce,
+        skip: resolvedSkip,
+        written: result.written,
+        skipped: result.skipped,
+        warnings: result.warnings,
       });
     },
   );
